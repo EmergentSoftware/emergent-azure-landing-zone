@@ -19,7 +19,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Run tfsec
       uses: aquasecurity/tfsec-action@v1.0.3
@@ -36,7 +36,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Run Checkov
       uses: bridgecrewio/checkov-action@v12

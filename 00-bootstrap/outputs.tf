@@ -20,17 +20,17 @@ output "storage_account_id" {
 
 output "foundation_container_name" {
   description = "Container name for foundation layer state"
-  value       = azurerm_storage_container.foundation.name
+  value       = module.foundation_container.name
 }
 
 output "landing_zones_container_name" {
   description = "Container name for landing zones layer state"
-  value       = azurerm_storage_container.landing_zones.name
+  value       = module.landing_zones_container.name
 }
 
 output "workloads_container_name" {
   description = "Container name for workloads layer state"
-  value       = azurerm_storage_container.workloads.name
+  value       = module.workloads_container.name
 }
 
 output "primary_access_key" {
@@ -44,7 +44,7 @@ output "backend_config_foundation" {
   value = {
     resource_group_name  = module.resource_group.name
     storage_account_name = module.storage_account.name
-    container_name       = azurerm_storage_container.foundation.name
+    container_name       = module.foundation_container.name
     key                  = "foundation.tfstate"
   }
 }
@@ -54,7 +54,7 @@ output "backend_config_landing_zones" {
   value = {
     resource_group_name  = module.resource_group.name
     storage_account_name = module.storage_account.name
-    container_name       = azurerm_storage_container.landing_zones.name
+    container_name       = module.landing_zones_container.name
     key                  = "landing-zones.tfstate"
   }
 }
@@ -64,7 +64,7 @@ output "backend_config_workloads" {
   value = {
     resource_group_name  = module.resource_group.name
     storage_account_name = module.storage_account.name
-    container_name       = azurerm_storage_container.workloads.name
+    container_name       = module.workloads_container.name
     key                  = "workloads.tfstate"
   }
 }
@@ -86,7 +86,7 @@ output "instructions" {
     backend "azurerm" {
       resource_group_name  = "${module.resource_group.name}"
       storage_account_name = "${module.storage_account.name}"
-      container_name       = "${azurerm_storage_container.foundation.name}"
+      container_name       = "${module.foundation_container.name}"
       key                  = "foundation.tfstate"
     }
   }
@@ -97,7 +97,7 @@ output "instructions" {
     backend "azurerm" {
       resource_group_name  = "${module.resource_group.name}"
       storage_account_name = "${module.storage_account.name}"
-      container_name       = "${azurerm_storage_container.landing_zones.name}"
+      container_name       = "${module.landing_zones_container.name}"
       key                  = "corp.tfstate"  # or "online.tfstate"
     }
   }
@@ -108,7 +108,7 @@ output "instructions" {
     backend "azurerm" {
       resource_group_name  = "${module.resource_group.name}"
       storage_account_name = "${module.storage_account.name}"
-      container_name       = "${azurerm_storage_container.workloads.name}"
+      container_name       = "${module.workloads_container.name}"
       key                  = "web-app.tfstate"  # or other workload name
     }
   }

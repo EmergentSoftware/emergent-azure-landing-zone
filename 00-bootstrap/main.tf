@@ -137,28 +137,32 @@ module "storage_account" {
 # Blob Containers for Each Deployment Layer
 # =============================================================================
 
-resource "azurerm_storage_container" "foundation" {
-  name                  = "tfstate-foundation"
-  storage_account_id    = module.storage_account.resource_id
-  container_access_type = "private"
+module "foundation_container" {
+  source = "../shared-modules/storage-container"
+
+  name               = "tfstate-foundation"
+  storage_account_id = module.storage_account.resource_id
 }
 
-resource "azurerm_storage_container" "landing_zones" {
-  name                  = "tfstate-landing-zones"
-  storage_account_id    = module.storage_account.resource_id
-  container_access_type = "private"
+module "landing_zones_container" {
+  source = "../shared-modules/storage-container"
+
+  name               = "tfstate-landing-zones"
+  storage_account_id = module.storage_account.resource_id
 }
 
-resource "azurerm_storage_container" "workloads" {
-  name                  = "tfstate-workloads"
-  storage_account_id    = module.storage_account.resource_id
-  container_access_type = "private"
+module "workloads_container" {
+  source = "../shared-modules/storage-container"
+
+  name               = "tfstate-workloads"
+  storage_account_id = module.storage_account.resource_id
 }
 
 # Optional: Create additional containers for different environments
-resource "azurerm_storage_container" "additional" {
-  for_each              = toset(var.additional_containers)
-  name                  = each.value
-  storage_account_id    = module.storage_account.resource_id
-  container_access_type = "private"
+module "additional_containers" {
+  source   = "../shared-modules/storage-container"
+  for_each = toset(var.additional_containers)
+
+  name               = each.value
+  storage_account_id = module.storage_account.resource_id
 }

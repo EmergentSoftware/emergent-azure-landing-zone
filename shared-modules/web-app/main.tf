@@ -20,6 +20,7 @@ module "web_app" {
   name                     = var.name
   resource_group_name      = var.resource_group_name
   location                 = var.location
+  os_type                  = var.os_type
   kind                     = var.kind
   service_plan_resource_id = var.service_plan_resource_id
   https_only               = var.https_only

@@ -10,5 +10,5 @@ output "resource_id" {
 
 output "location" {
   description = "The location of the resource group"
-  value       = module.resource_group.location
+  value       = module.resource_group.resource.location
 }

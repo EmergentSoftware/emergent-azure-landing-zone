@@ -19,15 +19,18 @@ variable "address_space" {
 }
 
 variable "subnets" {
-  description = "Map of subnets to create in the virtual network"
+  description = "Map of subnets to create in the virtual network (AVM v0.16+ format)"
   type = map(object({
+    name              = string
     address_prefixes  = list(string)
-    service_endpoints = optional(list(string), [])
-    delegation = optional(list(object({
+    service_endpoints_with_location = optional(list(object({
+      service   = string
+      locations = optional(list(string), ["*"])
+    })), [])
+    delegations = optional(list(object({
       name = string
       service_delegation = object({
-        name    = string
-        actions = optional(list(string), [])
+        name = string
       })
     })), [])
   }))
@@ -35,9 +38,11 @@ variable "subnets" {
 }
 
 variable "dns_servers" {
-  description = "List of DNS servers for the virtual network"
-  type        = list(string)
-  default     = null
+  description = "DNS servers configuration for the virtual network (AVM v0.16+ format requires object)"
+  type = object({
+    dns_servers = list(string)
+  })
+  default = null
 }
 
 variable "tags" {

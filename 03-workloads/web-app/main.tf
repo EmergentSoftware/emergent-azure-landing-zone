@@ -165,9 +165,13 @@ module "application_insights" {
   )
 }
 
-# Connect Application Insights to Web App
-resource "azurerm_app_service_site_extension" "app_insights" {
-  count = var.enable_application_insights ? 1 : 0
-
-  site_id = module.web_app.resource_id
-}
+# Note: azurerm_app_service_site_extension is deprecated in azurerm v4
+# Application Insights integration should be done via app_settings in the web_app module
+# See: https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/4.0-upgrade-guide
+# 
+# # Connect Application Insights to Web App
+# resource "azurerm_app_service_site_extension" "app_insights" {
+#   count = var.enable_application_insights ? 1 : 0
+#
+#   site_id = module.web_app.resource_id
+# }

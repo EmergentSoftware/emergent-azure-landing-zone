@@ -19,6 +19,17 @@ variable "kind" {
   default     = "app,linux"
 }
 
+variable "os_type" {
+  description = "The OS type for the web app (Windows or Linux)"
+  type        = string
+  default     = "Linux"
+  
+  validation {
+    condition     = contains(["Windows", "Linux"], var.os_type)
+    error_message = "os_type must be either 'Windows' or 'Linux'"
+  }
+}
+
 variable "service_plan_resource_id" {
   description = "The resource ID of the App Service Plan"
   type        = string

@@ -72,7 +72,7 @@ output "backend_config_workloads" {
 # Instructions for using remote backend
 output "instructions" {
   description = "Instructions for configuring remote backend in other layers"
-  value = <<-EOT
+  value       = <<-EOT
 
   ========================================
   Terraform State Storage Setup Complete

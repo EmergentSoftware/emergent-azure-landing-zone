@@ -15,16 +15,18 @@ terraform {
 
 module "virtual_network" {
   source  = "Azure/avm-res-network-virtualnetwork/azurerm"
-  version = "~> 0.7"
+  version = "~> 0.16"
 
-  name                = var.name
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  address_space       = var.address_space
+  name      = var.name
+  parent_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.resource_group_name}"
+  location  = var.location
 
-  subnets = var.subnets
-
-  dns_servers = var.dns_servers
+  address_space = var.address_space
+  subnets       = var.subnets
+  dns_servers   = var.dns_servers
 
   tags = var.tags
 }
+
+# Get current Azure context
+data "azurerm_client_config" "current" {}

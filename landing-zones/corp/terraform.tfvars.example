@@ -1,0 +1,50 @@
+# =============================================================================
+# Corporate Landing Zone Configuration
+# =============================================================================
+
+# Azure Authentication
+subscription_id = "00000000-0000-0000-0000-000000000000" # Replace with your subscription ID
+tenant_id       = "00000000-0000-0000-0000-000000000000" # Replace with your tenant ID
+
+# Workload Subscription Placement
+workload_subscription_id = "00000000-0000-0000-0000-000000000000" # Replace with your subscription ID
+
+# Landing Zone Configuration
+landing_zone_name                  = "corp-web-apps"
+landing_zone_management_group_name = "acme-landingzones-corp"
+
+# Location
+location = "eastus"
+
+# Networking Configuration
+create_virtual_network = true
+vnet_address_space     = ["10.0.0.0/16"]
+
+vnet_subnets = {
+  default = {
+    address_prefixes = ["10.0.1.0/24"]
+  }
+  webapp = {
+    address_prefixes  = ["10.0.2.0/24"]
+    service_endpoints = ["Microsoft.Web", "Microsoft.Storage", "Microsoft.KeyVault"]
+  }
+  data = {
+    address_prefixes  = ["10.0.3.0/24"]
+    service_endpoints = ["Microsoft.Sql", "Microsoft.Storage"]
+  }
+}
+
+# Use Azure default DNS or specify custom DNS servers
+# vnet_dns_servers = ["10.100.1.4", "10.100.1.5"]  # Uncomment for custom DNS
+
+# Monitoring Configuration
+create_log_analytics = true
+log_retention_days   = 30
+
+# Tags
+tags = {
+  Environment = "Production"
+  CostCenter  = "IT"
+  Owner       = "Platform Team"
+  LandingZone = "Corporate"
+}

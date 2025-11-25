@@ -22,6 +22,16 @@ provider "azurerm" {
   subscription_id = var.subscription_id
 }
 
+# =============================================================================
+# Naming Module for Consistent Azure Resource Naming
+# =============================================================================
+
+module "naming" {
+  source  = "Azure/naming/azurerm"
+  version = "~> 0.4"
+  suffix  = [var.workload_name, var.environment]
+}
+
 # Generate random suffix for unique naming
 resource "random_string" "suffix" {
   length  = 6
@@ -50,7 +60,7 @@ locals {
 module "resource_group" {
   source = "../../shared-modules/resource-group"
 
-  name     = "rg-${var.workload_name}-${var.environment}-${var.location}"
+  name     = module.naming.resource_group.name_unique
   location = var.location
   tags     = local.common_tags
 }
@@ -62,7 +72,7 @@ module "resource_group" {
 module "app_service_plan" {
   source = "../../shared-modules/app-service-plan"
 
-  name                = "asp-${var.workload_name}-${var.environment}-${random_string.suffix.result}"
+  name                = "${module.naming.app_service_plan.name}-${random_string.suffix.result}"
   resource_group_name = module.resource_group.name
   location            = var.location
   os_type             = var.app_service_os_type
@@ -77,7 +87,7 @@ module "app_service_plan" {
 module "web_app" {
   source = "../../shared-modules/web-app"
 
-  name                     = "app-${var.workload_name}-${var.environment}-${random_string.suffix.result}"
+  name                     = "${module.naming.app_service.name}-${random_string.suffix.result}"
   resource_group_name      = module.resource_group.name
   location                 = var.location
   kind                     = var.app_service_os_type == "Linux" ? "app,linux" : "app"
@@ -136,7 +146,7 @@ module "application_insights" {
   count  = var.enable_application_insights ? 1 : 0
   source = "../../shared-modules/application-insights"
 
-  name                = "appi-${var.workload_name}-${var.environment}-${random_string.suffix.result}"
+  name                = "${module.naming.application_insights.name}-${random_string.suffix.result}"
   resource_group_name = module.resource_group.name
   location            = var.location
   application_type    = "web"

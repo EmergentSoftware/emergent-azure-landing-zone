@@ -33,6 +33,16 @@ provider "azurerm" {
 # Get current Azure context
 data "azurerm_client_config" "current" {}
 
+# =============================================================================
+# Naming Module for Consistent Azure Resource Naming
+# =============================================================================
+
+module "naming" {
+  source  = "Azure/naming/azurerm"
+  version = "~> 0.4"
+  suffix  = [var.environment, var.location]
+}
+
 # Generate a random suffix for storage account name (must be globally unique)
 resource "random_string" "storage_suffix" {
   length  = 6
@@ -62,7 +72,7 @@ module "resource_group" {
   source  = "Azure/avm-res-resources-resourcegroup/azurerm"
   version = "0.2.1"
 
-  name     = var.resource_group_name
+  name     = module.naming.resource_group.name_unique
   location = var.location
   tags     = local.common_tags
 }
@@ -75,7 +85,7 @@ module "storage_account" {
   source  = "Azure/avm-res-storage-storageaccount/azurerm"
   version = "0.4.0"
 
-  name                = "${var.storage_account_prefix}${random_string.storage_suffix.result}"
+  name                = "${module.naming.storage_account.name}${random_string.storage_suffix.result}"
   location            = var.location
   resource_group_name = module.resource_group.name
 

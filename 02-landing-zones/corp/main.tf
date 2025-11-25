@@ -25,6 +25,16 @@ data "azurerm_management_group" "landing_zone" {
   name = var.landing_zone_management_group_name
 }
 
+# =============================================================================
+# Naming Module for Consistent Azure Resource Naming
+# =============================================================================
+
+module "naming" {
+  source  = "Azure/naming/azurerm"
+  version = "~> 0.4"
+  suffix  = [var.landing_zone_name, var.location]
+}
+
 # Prepare common tags for all resources
 locals {
   common_tags = merge(
@@ -54,7 +64,7 @@ module "networking_resource_group" {
   count  = var.create_virtual_network ? 1 : 0
   source = "../../shared-modules/resource-group"
 
-  name     = "rg-${var.landing_zone_name}-networking-${var.location}"
+  name     = "${module.naming.resource_group.name}-networking"
   location = var.location
   tags     = local.common_tags
 }
@@ -64,7 +74,7 @@ module "virtual_network" {
   count  = var.create_virtual_network ? 1 : 0
   source = "../../shared-modules/virtual-network"
 
-  name                = "vnet-${var.landing_zone_name}-${var.location}"
+  name                = module.naming.virtual_network.name_unique
   resource_group_name = module.networking_resource_group[0].name
   location            = var.location
   address_space       = var.vnet_address_space
@@ -84,7 +94,7 @@ module "monitoring_resource_group" {
   count  = var.create_log_analytics ? 1 : 0
   source = "../../shared-modules/resource-group"
 
-  name     = "rg-${var.landing_zone_name}-monitoring-${var.location}"
+  name     = "${module.naming.resource_group.name}-monitoring"
   location = var.location
   tags     = local.common_tags
 }
@@ -94,7 +104,7 @@ module "log_analytics_workspace" {
   count  = var.create_log_analytics ? 1 : 0
   source = "../../shared-modules/log-analytics-workspace"
 
-  name                = "log-${var.landing_zone_name}-${var.location}"
+  name                = module.naming.log_analytics_workspace.name_unique
   resource_group_name = module.monitoring_resource_group[0].name
   location            = var.location
   sku                 = "PerGB2018"

@@ -21,8 +21,8 @@ variable "address_space" {
 variable "subnets" {
   description = "Map of subnets to create in the virtual network (AVM v0.16+ format)"
   type = map(object({
-    name              = string
-    address_prefixes  = list(string)
+    name             = string
+    address_prefixes = list(string)
     service_endpoints_with_location = optional(list(object({
       service   = string
       locations = optional(list(string), ["*"])

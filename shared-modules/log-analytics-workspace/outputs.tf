@@ -1,6 +1,6 @@
 output "name" {
   description = "The name of the Log Analytics workspace"
-  value       = module.log_analytics_workspace.name
+  value       = module.log_analytics_workspace.resource.name
 }
 
 output "resource_id" {
@@ -10,7 +10,7 @@ output "resource_id" {
 
 output "workspace_id" {
   description = "The workspace ID (GUID) of the Log Analytics workspace"
-  value       = module.log_analytics_workspace.workspace_id
+  value       = module.log_analytics_workspace.resource.workspace_id
 }
 
 output "id" {

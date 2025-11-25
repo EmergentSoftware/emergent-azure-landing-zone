@@ -20,5 +20,5 @@ output "subnets" {
 
 output "address_space" {
   description = "The address space of the virtual network"
-  value       = module.virtual_network.address_space
+  value       = module.virtual_network.address_spaces
 }

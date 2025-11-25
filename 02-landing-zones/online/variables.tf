@@ -44,34 +44,48 @@ variable "vnet_address_space" {
 }
 
 variable "vnet_subnets" {
-  description = "Map of subnets to create in the virtual network"
+  description = "Map of subnets to create in the virtual network (AVM v0.16+ format)"
   type = map(object({
-    address_prefixes  = list(string)
-    service_endpoints = optional(list(string), [])
-    delegation = optional(list(object({
+    name             = string
+    address_prefixes = list(string)
+    service_endpoints_with_location = optional(list(object({
+      service   = string
+      locations = optional(list(string), ["*"])
+    })), [])
+    delegations = optional(list(object({
       name = string
       service_delegation = object({
-        name    = string
-        actions = optional(list(string), [])
+        name = string
       })
     })), [])
   }))
   default = {
     frontend = {
-      address_prefixes  = ["10.1.1.0/24"]
-      service_endpoints = ["Microsoft.Web", "Microsoft.Storage"]
+      name             = "subnet-frontend"
+      address_prefixes = ["10.1.1.0/24"]
+      service_endpoints_with_location = [
+        { service = "Microsoft.Web" },
+        { service = "Microsoft.Storage" }
+      ]
     }
     backend = {
-      address_prefixes  = ["10.1.2.0/24"]
-      service_endpoints = ["Microsoft.Web", "Microsoft.Sql", "Microsoft.Storage"]
+      name             = "subnet-backend"
+      address_prefixes = ["10.1.2.0/24"]
+      service_endpoints_with_location = [
+        { service = "Microsoft.Web" },
+        { service = "Microsoft.Sql" },
+        { service = "Microsoft.Storage" }
+      ]
     }
   }
 }
 
 variable "vnet_dns_servers" {
-  description = "List of DNS servers for the virtual network (use Azure default if not specified)"
-  type        = list(string)
-  default     = null
+  description = "DNS servers configuration for the virtual network (AVM v0.16+ format)"
+  type = object({
+    dns_servers = list(string)
+  })
+  default = null
 }
 
 # Monitoring Variables

@@ -1,18 +1,18 @@
 # Emergent Software - Azure Landing Zone Reference Implementation
 
-> **Official Reference Implementation**  
+> **Official Reference Implementation**
 > This repository is Emergent Software's official reference implementation for deploying Azure Landing Zones using Azure Verified Modules (AVM) and Terraform.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.3.0-623CE4?logo=terraform)](https://www.terraform.io/)
 [![Azure Verified Modules](https://img.shields.io/badge/AVM-Verified-0078D4?logo=microsoft-azure)](https://azure.github.io/Azure-Verified-Modules/)
 
-> **⚠️ IMPORTANT: Deployment Order**  
+> **⚠️ IMPORTANT: Deployment Order**
 > See [DEPLOYMENT-ORDER.md](./DEPLOYMENT-ORDER.md) for the complete deployment guide.
-> 
+>
 > 0. **00-bootstrap/** - Create Terraform state storage (run once)
 > 1. **01-foundation/** - Deploy management groups & policies first
-> 2. **02-landing-zones/** - Place subscription in landing zone second  
+> 2. **02-landing-zones/** - Place subscription in landing zone second
 > 3. **03-workloads/** - Deploy application resources third
 
 ## 📖 About This Repository
@@ -57,11 +57,11 @@ This demo uses the official **AVM Pattern Module for Azure Landing Zones**:
 
 ### Key Features
 
-✅ CAF-aligned management group hierarchy  
-✅ Baseline Azure Policy definitions and assignments  
-✅ Policy role assignments with managed identities  
-✅ Customizable policy parameters and enforcement  
-✅ Built-in retry logic for resilient deployments  
+✅ CAF-aligned management group hierarchy
+✅ Baseline Azure Policy definitions and assignments
+✅ Policy role assignments with managed identities
+✅ Customizable policy parameters and enforcement
+✅ Built-in retry logic for resilient deployments
 
 ## 📋 Prerequisites
 
@@ -75,7 +75,7 @@ Before you begin, ensure you have:
    ```powershell
    # Install using winget
    winget install Hashicorp.Terraform
-   
+
    # Verify installation
    terraform version
    ```
@@ -84,10 +84,10 @@ Before you begin, ensure you have:
    ```powershell
    # Install Azure CLI
    winget install Microsoft.AzureCLI
-   
+
    # Login to Azure
    az login
-   
+
    # Set your subscription
    az account set --subscription "YOUR_SUBSCRIPTION_ID"
    ```
@@ -253,7 +253,7 @@ Place subscriptions into management groups:
 ```hcl
 module "alz" {
   # ... other configuration ...
-  
+
   subscription_placement = {
     prod_subscription = {
       subscription_id       = "00000000-0000-0000-0000-000000000000"

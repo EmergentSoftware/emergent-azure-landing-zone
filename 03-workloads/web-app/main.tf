@@ -4,7 +4,7 @@
 # =============================================================================
 
 terraform {
-  required_version = ">= 1.3.0"
+  required_version = ">= 1.12.0"
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -34,7 +34,7 @@ resource "random_string" "suffix" {
 # =============================================================================
 
 module "resource_group" {
-  source = "../../modules/resource-group"
+  source = "../../shared-modules/resource-group"
 
   name     = "rg-${var.workload_name}-${var.environment}-${var.location}"
   location = var.location
@@ -55,7 +55,7 @@ module "resource_group" {
 # =============================================================================
 
 module "app_service_plan" {
-  source = "../../modules/app-service-plan"
+  source = "../../shared-modules/app-service-plan"
 
   name                = "asp-${var.workload_name}-${var.environment}-${random_string.suffix.result}"
   resource_group_name = module.resource_group.name
@@ -79,7 +79,7 @@ module "app_service_plan" {
 # =============================================================================
 
 module "web_app" {
-  source = "../../modules/web-app"
+  source = "../../shared-modules/web-app"
 
   name                     = "app-${var.workload_name}-${var.environment}-${random_string.suffix.result}"
   resource_group_name      = module.resource_group.name
@@ -146,7 +146,7 @@ module "web_app" {
 
 module "application_insights" {
   count  = var.enable_application_insights ? 1 : 0
-  source = "../../modules/application-insights"
+  source = "../../shared-modules/application-insights"
 
   name                = "appi-${var.workload_name}-${var.environment}-${random_string.suffix.result}"
   resource_group_name = module.resource_group.name
@@ -165,9 +165,13 @@ module "application_insights" {
   )
 }
 
-# Connect Application Insights to Web App
-resource "azurerm_app_service_site_extension" "app_insights" {
-  count = var.enable_application_insights ? 1 : 0
-
-  site_id = module.web_app.resource_id
-}
+# Note: azurerm_app_service_site_extension is deprecated in azurerm v4
+# Application Insights integration should be done via app_settings in the web_app module
+# See: https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/4.0-upgrade-guide
+#
+# # Connect Application Insights to Web App
+# resource "azurerm_app_service_site_extension" "app_insights" {
+#   count = var.enable_application_insights ? 1 : 0
+#
+#   site_id = module.web_app.resource_id
+# }

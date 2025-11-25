@@ -5,7 +5,7 @@
 # =============================================================================
 
 terraform {
-  required_version = ">= 1.3.0"
+  required_version = ">= 1.12.0"
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -38,7 +38,7 @@ resource "azurerm_management_group_subscription_association" "workload" {
 # Resource Group for networking resources
 module "networking_resource_group" {
   count  = var.create_virtual_network ? 1 : 0
-  source = "../../modules/resource-group"
+  source = "../../shared-modules/resource-group"
 
   name     = "rg-${var.landing_zone_name}-networking-${var.location}"
   location = var.location
@@ -57,7 +57,7 @@ module "networking_resource_group" {
 # Virtual Network for landing zone workloads
 module "virtual_network" {
   count  = var.create_virtual_network ? 1 : 0
-  source = "../../modules/virtual-network"
+  source = "../../shared-modules/virtual-network"
 
   name                = "vnet-${var.landing_zone_name}-${var.location}"
   resource_group_name = module.networking_resource_group[0].name
@@ -86,7 +86,7 @@ module "virtual_network" {
 # Resource Group for monitoring resources
 module "monitoring_resource_group" {
   count  = var.create_log_analytics ? 1 : 0
-  source = "../../modules/resource-group"
+  source = "../../shared-modules/resource-group"
 
   name     = "rg-${var.landing_zone_name}-monitoring-${var.location}"
   location = var.location
@@ -105,7 +105,7 @@ module "monitoring_resource_group" {
 # Log Analytics Workspace for landing zone diagnostics
 module "log_analytics_workspace" {
   count  = var.create_log_analytics ? 1 : 0
-  source = "../../modules/log-analytics-workspace"
+  source = "../../shared-modules/log-analytics-workspace"
 
   name                = "log-${var.landing_zone_name}-${var.location}"
   resource_group_name = module.monitoring_resource_group[0].name

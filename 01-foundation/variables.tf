@@ -36,3 +36,15 @@ variable "enable_telemetry" {
   type        = bool
   default     = true
 }
+
+variable "tags" {
+  description = "Additional tags to apply to resources"
+  type        = map(string)
+  default     = {}
+}
+
+variable "common_tags" {
+  description = "Common tags applied to all resources"
+  type        = map(string)
+  default     = {}
+}

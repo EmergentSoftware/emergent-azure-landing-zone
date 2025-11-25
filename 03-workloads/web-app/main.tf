@@ -22,11 +22,34 @@ provider "azurerm" {
   subscription_id = var.subscription_id
 }
 
+# =============================================================================
+# Naming Module for Consistent Azure Resource Naming
+# =============================================================================
+
+module "naming" {
+  source = "../../shared-modules/naming"
+  suffix = [var.workload_name, var.environment]
+}
+
 # Generate random suffix for unique naming
 resource "random_string" "suffix" {
   length  = 6
   special = false
   upper   = false
+}
+
+# Prepare common tags for all resources
+locals {
+  common_tags = merge(
+    var.tags,
+    var.common_tags,
+    {
+      Workload    = var.workload_name
+      Environment = var.environment
+      ManagedBy   = "Terraform"
+      DeployedBy  = "AVM"
+    }
+  )
 }
 
 # =============================================================================
@@ -36,18 +59,9 @@ resource "random_string" "suffix" {
 module "resource_group" {
   source = "../../shared-modules/resource-group"
 
-  name     = "rg-${var.workload_name}-${var.environment}-${var.location}"
+  name     = module.naming.resource_group.name_unique
   location = var.location
-
-  tags = merge(
-    var.tags,
-    {
-      Workload    = var.workload_name
-      Environment = var.environment
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags     = local.common_tags
 }
 
 # =============================================================================
@@ -57,21 +71,12 @@ module "resource_group" {
 module "app_service_plan" {
   source = "../../shared-modules/app-service-plan"
 
-  name                = "asp-${var.workload_name}-${var.environment}-${random_string.suffix.result}"
+  name                = "${module.naming.app_service_plan.name}-${random_string.suffix.result}"
   resource_group_name = module.resource_group.name
   location            = var.location
   os_type             = var.app_service_os_type
   sku_name            = var.app_service_sku_name
-
-  tags = merge(
-    var.tags,
-    {
-      Workload    = var.workload_name
-      Environment = var.environment
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags                = local.common_tags
 }
 
 # =============================================================================
@@ -81,7 +86,7 @@ module "app_service_plan" {
 module "web_app" {
   source = "../../shared-modules/web-app"
 
-  name                     = "app-${var.workload_name}-${var.environment}-${random_string.suffix.result}"
+  name                     = "${module.naming.app_service.name}-${random_string.suffix.result}"
   resource_group_name      = module.resource_group.name
   location                 = var.location
   kind                     = var.app_service_os_type == "Linux" ? "app,linux" : "app"
@@ -127,15 +132,7 @@ module "web_app" {
     }
   } : {}
 
-  tags = merge(
-    var.tags,
-    {
-      Workload    = var.workload_name
-      Environment = var.environment
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags = local.common_tags
 
   depends_on = [module.app_service_plan]
 }
@@ -148,30 +145,10 @@ module "application_insights" {
   count  = var.enable_application_insights ? 1 : 0
   source = "../../shared-modules/application-insights"
 
-  name                = "appi-${var.workload_name}-${var.environment}-${random_string.suffix.result}"
+  name                = "${module.naming.application_insights.name}-${random_string.suffix.result}"
   resource_group_name = module.resource_group.name
   location            = var.location
   application_type    = "web"
   workspace_id        = var.log_analytics_workspace_id
-
-  tags = merge(
-    var.tags,
-    {
-      Workload    = var.workload_name
-      Environment = var.environment
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags                = local.common_tags
 }
-
-# Note: azurerm_app_service_site_extension is deprecated in azurerm v4
-# Application Insights integration should be done via app_settings in the web_app module
-# See: https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/4.0-upgrade-guide
-#
-# # Connect Application Insights to Web App
-# resource "azurerm_app_service_site_extension" "app_insights" {
-#   count = var.enable_application_insights ? 1 : 0
-#
-#   site_id = module.web_app.resource_id
-# }

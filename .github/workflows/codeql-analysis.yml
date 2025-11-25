@@ -16,12 +16,14 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      pull-requests: write
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v6
 
     - name: Run tfsec
+      id: tfsec
       uses: aquasecurity/tfsec-action@v1.0.3
       with:
         soft_fail: true
@@ -33,12 +35,14 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      pull-requests: write
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v6
 
     - name: Run Checkov
+      id: checkov
       uses: bridgecrewio/checkov-action@v12
       with:
         directory: .
@@ -48,8 +52,8 @@ jobs:
         output_file_path: console,results.sarif
 
     - name: Upload SARIF file
-      if: success() || failure()
+      if: always()
       uses: github/codeql-action/upload-sarif@v4
       with:
         sarif_file: results.sarif
-        category: checkov-terraform
+        category: checkov

@@ -25,6 +25,29 @@ data "azurerm_management_group" "landing_zone" {
   name = var.landing_zone_management_group_name
 }
 
+# =============================================================================
+# Naming Module for Consistent Azure Resource Naming
+# =============================================================================
+
+module "naming" {
+  source = "../../shared-modules/naming"
+  suffix = [var.landing_zone_name, var.location]
+}
+
+# Prepare common tags for all resources
+locals {
+  common_tags = merge(
+    var.tags,
+    var.common_tags,
+    {
+      Purpose     = "Landing Zone - Online"
+      LandingZone = var.landing_zone_name
+      ManagedBy   = "Terraform"
+      DeployedBy  = "AVM"
+    }
+  )
+}
+
 # Place the subscription into the landing zone management group
 resource "azurerm_management_group_subscription_association" "workload" {
   management_group_id = data.azurerm_management_group.landing_zone.id
@@ -40,18 +63,9 @@ module "networking_resource_group" {
   count  = var.create_virtual_network ? 1 : 0
   source = "../../shared-modules/resource-group"
 
-  name     = "rg-${var.landing_zone_name}-networking-${var.location}"
+  name     = "${module.naming.resource_group.name}-networking"
   location = var.location
-
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Networking"
-      LandingZone = var.landing_zone_name
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags     = local.common_tags
 }
 
 # Virtual Network for landing zone workloads
@@ -59,7 +73,7 @@ module "virtual_network" {
   count  = var.create_virtual_network ? 1 : 0
   source = "../../shared-modules/virtual-network"
 
-  name                = "vnet-${var.landing_zone_name}-${var.location}"
+  name                = module.naming.virtual_network.name_unique
   resource_group_name = module.networking_resource_group[0].name
   location            = var.location
   address_space       = var.vnet_address_space
@@ -67,16 +81,7 @@ module "virtual_network" {
   subnets = var.vnet_subnets
 
   dns_servers = var.vnet_dns_servers
-
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Networking"
-      LandingZone = var.landing_zone_name
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags        = local.common_tags
 }
 
 # =============================================================================
@@ -88,18 +93,9 @@ module "monitoring_resource_group" {
   count  = var.create_log_analytics ? 1 : 0
   source = "../../shared-modules/resource-group"
 
-  name     = "rg-${var.landing_zone_name}-monitoring-${var.location}"
+  name     = "${module.naming.resource_group.name}-monitoring"
   location = var.location
-
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Monitoring"
-      LandingZone = var.landing_zone_name
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags     = local.common_tags
 }
 
 # Log Analytics Workspace for landing zone diagnostics
@@ -107,19 +103,10 @@ module "log_analytics_workspace" {
   count  = var.create_log_analytics ? 1 : 0
   source = "../../shared-modules/log-analytics-workspace"
 
-  name                = "log-${var.landing_zone_name}-${var.location}"
+  name                = module.naming.log_analytics_workspace.name_unique
   resource_group_name = module.monitoring_resource_group[0].name
   location            = var.location
   sku                 = "PerGB2018"
   retention_in_days   = var.log_retention_days
-
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Monitoring"
-      LandingZone = var.landing_zone_name
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags                = local.common_tags
 }

@@ -1,0 +1,34 @@
+# CODEOWNERS
+# 
+# This file defines who is responsible for reviewing code in different parts of the repository.
+# When a pull request is created, GitHub will automatically request reviews from the appropriate owners.
+#
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+# These owners will be the default reviewers unless a more specific match is found below
+* @emergentsoftware/platform-team
+
+# Foundation and core infrastructure
+/alz-foundation/ @emergentsoftware/platform-team
+/alz-foundation/modules/ @emergentsoftware/platform-team
+
+# Landing zones
+/landing-zones/ @emergentsoftware/platform-team
+
+# Reusable modules
+/modules/ @emergentsoftware/platform-team
+
+# Workloads - can be owned by application teams
+/workloads/ @emergentsoftware/platform-team
+
+# Documentation
+*.md @emergentsoftware/platform-team
+/docs/ @emergentsoftware/platform-team
+
+# GitHub configuration and workflows
+/.github/ @emergentsoftware/platform-team
+
+# Security and compliance
+/SECURITY.md @emergentsoftware/security-team
+/.github/workflows/security-scan.yml @emergentsoftware/security-team

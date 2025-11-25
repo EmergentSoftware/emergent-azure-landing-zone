@@ -38,9 +38,8 @@ data "azurerm_client_config" "current" {}
 # =============================================================================
 
 module "naming" {
-  source  = "Azure/naming/azurerm"
-  version = "~> 0.4"
-  suffix  = [var.environment, var.location]
+  source = "../shared-modules/naming"
+  suffix = [var.environment, var.location]
 }
 
 # Generate a random suffix for storage account name (must be globally unique)

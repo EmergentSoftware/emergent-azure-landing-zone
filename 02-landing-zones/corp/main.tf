@@ -30,9 +30,8 @@ data "azurerm_management_group" "landing_zone" {
 # =============================================================================
 
 module "naming" {
-  source  = "Azure/naming/azurerm"
-  version = "~> 0.4"
-  suffix  = [var.landing_zone_name, var.location]
+  source = "../../shared-modules/naming"
+  suffix = [var.landing_zone_name, var.location]
 }
 
 # Prepare common tags for all resources

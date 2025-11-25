@@ -27,9 +27,8 @@ provider "azurerm" {
 # =============================================================================
 
 module "naming" {
-  source  = "Azure/naming/azurerm"
-  version = "~> 0.4"
-  suffix  = [var.workload_name, var.environment]
+  source = "../../shared-modules/naming"
+  suffix = [var.workload_name, var.environment]
 }
 
 # Generate random suffix for unique naming

@@ -1,0 +1,73 @@
+version: 2
+updates:
+  # Terraform modules from Terraform Registry
+  - package-ecosystem: "terraform"
+    directory: "/00-bootstrap"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    labels:
+      - "dependencies"
+      - "terraform"
+      - "bootstrap"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  - package-ecosystem: "terraform"
+    directory: "/01-foundation"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+    labels:
+      - "dependencies"
+      - "terraform"
+      - "foundation"
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "terraform"
+    directory: "/02-landing-zones/corp"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "terraform"
+      - "landing-zone"
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "terraform"
+    directory: "/02-landing-zones/online"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "terraform"
+      - "landing-zone"
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "terraform"
+    directory: "/03-workloads/web-app"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "terraform"
+      - "workload"
+    commit-message:
+      prefix: "chore(deps)"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps)"

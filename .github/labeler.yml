@@ -1,0 +1,54 @@
+# Configuration for Pull Request Labeler
+# https://github.com/actions/labeler
+
+# Bootstrap Infrastructure
+'bootstrap':
+  - changed-files:
+    - any-glob-to-any-file: '00-bootstrap/**'
+
+# ALZ Foundation
+'foundation':
+  - changed-files:
+    - any-glob-to-any-file: '01-foundation/**'
+
+# Landing Zones
+'landing-zone':
+  - changed-files:
+    - any-glob-to-any-file: '02-landing-zones/**'
+
+'landing-zone:corp':
+  - changed-files:
+    - any-glob-to-any-file: '02-landing-zones/corp/**'
+
+'landing-zone:online':
+  - changed-files:
+    - any-glob-to-any-file: '02-landing-zones/online/**'
+
+# Workloads
+'workload':
+  - changed-files:
+    - any-glob-to-any-file: '03-workloads/**'
+
+# Shared Modules
+'modules':
+  - changed-files:
+    - any-glob-to-any-file: 'shared-modules/**'
+
+# Documentation
+'documentation':
+  - changed-files:
+    - any-glob-to-any-file: 
+      - '**/*.md'
+      - 'docs/**'
+
+# GitHub Configuration
+'github':
+  - changed-files:
+    - any-glob-to-any-file: '.github/**'
+
+# Dependencies
+'dependencies':
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/terraform.lock.hcl'
+      - '**/.terraform.lock.hcl'

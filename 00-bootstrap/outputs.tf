@@ -73,15 +73,15 @@ output "backend_config_workloads" {
 output "instructions" {
   description = "Instructions for configuring remote backend in other layers"
   value = <<-EOT
-  
+
   ========================================
   Terraform State Storage Setup Complete
   ========================================
-  
+
   Add this backend configuration to your Terraform layers:
-  
+
   ### For 01-foundation/main.tf:
-  
+
   terraform {
     backend "azurerm" {
       resource_group_name  = "${azurerm_resource_group.tfstate.name}"
@@ -90,9 +90,9 @@ output "instructions" {
       key                  = "foundation.tfstate"
     }
   }
-  
+
   ### For 02-landing-zones/*/main.tf:
-  
+
   terraform {
     backend "azurerm" {
       resource_group_name  = "${azurerm_resource_group.tfstate.name}"
@@ -101,9 +101,9 @@ output "instructions" {
       key                  = "corp.tfstate"  # or "online.tfstate"
     }
   }
-  
+
   ### For 03-workloads/*/main.tf:
-  
+
   terraform {
     backend "azurerm" {
       resource_group_name  = "${azurerm_resource_group.tfstate.name}"
@@ -112,12 +112,12 @@ output "instructions" {
       key                  = "web-app.tfstate"  # or other workload name
     }
   }
-  
+
   ========================================
   Storage Account: ${azurerm_storage_account.tfstate.name}
   Resource Group:  ${azurerm_resource_group.tfstate.name}
   Location:        ${azurerm_resource_group.tfstate.location}
   ========================================
-  
+
   EOT
 }

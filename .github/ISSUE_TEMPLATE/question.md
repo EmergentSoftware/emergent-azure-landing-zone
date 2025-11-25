@@ -17,7 +17,7 @@ Provide any relevant context that might help answer your question:
 
 ## Environment (if applicable)
 - **Terraform Version**: [e.g., 1.9.0]
-- **Module**: [e.g., alz-foundation, landing-zones/corp]
+- **Module**: [e.g., 01-foundation, 02-landing-zones/corp]
 
 ## Additional Information
 Add any other relevant information, documentation references, or screenshots.

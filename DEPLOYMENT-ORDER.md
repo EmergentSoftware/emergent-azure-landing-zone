@@ -30,7 +30,7 @@ This guide explains the correct sequence for deploying the Azure Landing Zone in
 
 ## Step 1: Deploy ALZ Foundation
 
-**Directory**: `alz-foundation/`
+**Directory**: `01-foundation/`
 
 **Purpose**: Creates the management group hierarchy and applies governance policies.
 
@@ -41,7 +41,7 @@ This guide explains the correct sequence for deploying the Azure Landing Zone in
 
 **Commands**:
 ```bash
-cd alz-foundation
+cd 01-foundation
 terraform init
 terraform plan
 terraform apply
@@ -64,7 +64,7 @@ terraform output management_group_ids
 
 ## Step 2: Place Subscription in Landing Zone
 
-**Directory**: `landing-zones/`
+**Directory**: `02-landing-zones/`
 
 **Purpose**: Associates your subscription with the appropriate landing zone management group and creates shared monitoring resources.
 
@@ -74,7 +74,7 @@ terraform output management_group_ids
 
 **Configuration**:
 ```bash
-cd ../landing-zones
+cd ../02-landing-zones
 cp terraform.tfvars.example terraform.tfvars
 ```
 
@@ -109,7 +109,7 @@ az account management-group show --name acme-landingzones-corp --expand
 **Save This Value**:
 ```bash
 # Copy the Log Analytics workspace ID
-terraform output -raw log_analytics_workspace_resource_id > ../workloads/web-app/.log-analytics-id
+terraform output -raw log_analytics_workspace_resource_id > ../03-workloads/web-app/.log-analytics-id
 ```
 
 **Wait Time**: 2-5 minutes for policy assignments to propagate
@@ -118,7 +118,7 @@ terraform output -raw log_analytics_workspace_resource_id > ../workloads/web-app
 
 ## Step 3: Deploy Workloads
 
-**Directory**: `workloads/web-app/`
+**Directory**: `03-workloads/web-app/`
 
 **Purpose**: Deploys application resources into the landing zone.
 
@@ -129,7 +129,7 @@ terraform output -raw log_analytics_workspace_resource_id > ../workloads/web-app
 
 **Configuration**:
 ```bash
-cd ../workloads/web-app
+cd ../03-workloads/web-app
 cp terraform.tfvars.example terraform.tfvars
 ```
 
@@ -141,7 +141,7 @@ workload_name = "demo-web"
 environment   = "dev"
 location      = "eastus"
 
-# From landing-zones output (Step 2)
+# From 02-landing-zones output (Step 2)
 log_analytics_workspace_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-corp-web-apps-monitoring-eastus/providers/Microsoft.OperationalInsights/workspaces/log-corp-web-apps-eastus"
 
 app_service_os_type = "Linux"
@@ -194,10 +194,10 @@ echo "✓ ALZ Foundation deployed"
 # Step 2: Landing Zone
 echo ""
 echo "Step 2/3: Placing subscription in landing zone..."
-cd ../landing-zones
+cd ../02-landing-zones
 if [ ! -f terraform.tfvars ]; then
   cp terraform.tfvars.example terraform.tfvars
-  echo "⚠ Please edit landing-zones/terraform.tfvars and run this script again"
+  echo "⚠ Please edit 02-landing-zones/terraform.tfvars and run this script again"
   exit 1
 fi
 terraform init
@@ -214,7 +214,7 @@ sleep 60
 # Step 3: Workload
 echo ""
 echo "Step 3/3: Deploying workload..."
-cd ../workloads/web-app
+cd ../03-workloads/web-app
 if [ ! -f terraform.tfvars ]; then
   cp terraform.tfvars.example terraform.tfvars
   # Inject Log Analytics workspace ID
@@ -252,7 +252,7 @@ Use this checklist for manual deployments:
   - [ ] User Access Administrator role for RBAC
 
 - [ ] **2. Deploy ALZ Foundation**
-  - [ ] `cd alz-foundation`
+  - [ ] `cd 01-foundation`
   - [ ] Review `terraform.tfvars` settings
   - [ ] `terraform init`
   - [ ] `terraform plan` (review 540 resources)
@@ -260,7 +260,7 @@ Use this checklist for manual deployments:
   - [ ] Verify management groups in Azure Portal
 
 - [ ] **3. Deploy Landing Zone**
-  - [ ] `cd ../landing-zones`
+  - [ ] `cd ../02-landing-zones`
   - [ ] `cp terraform.tfvars.example terraform.tfvars`
   - [ ] Edit `terraform.tfvars` with correct management group name
   - [ ] `terraform init`
@@ -270,7 +270,7 @@ Use this checklist for manual deployments:
   - [ ] Wait 2-5 minutes for policy propagation
 
 - [ ] **4. Deploy Workload**
-  - [ ] `cd ../workloads/web-app`
+  - [ ] `cd ../03-workloads/web-app`
   - [ ] `cp terraform.tfvars.example terraform.tfvars`
   - [ ] Edit `terraform.tfvars` with Log Analytics ID from Step 3
   - [ ] `terraform init`
@@ -293,7 +293,7 @@ Use this checklist for manual deployments:
 
 **Error**: Policy library not found
 ```
-Solution: Verify ALZ provider configuration in alz-foundation/main.tf
+Solution: Verify ALZ provider configuration in 01-foundation/main.tf
 Check that library_references uses platform/alz@2025.09.0
 ```
 
@@ -308,7 +308,7 @@ Run: az role assignment create --assignee <your-user-id> --role Owner --scope /s
 **Error**: Management group not found
 ```
 Solution: Wait for ALZ foundation to complete, then retry
-Check: terraform output -raw management_group_ids (in alz-foundation/)
+Check: terraform output -raw management_group_ids (in 01-foundation/)
 ```
 
 **Error**: Cannot move subscription
@@ -328,7 +328,7 @@ Verify workload location matches allowed locations in policy
 **Error**: Cannot write to Log Analytics
 ```
 Solution: Verify workspace ID is correct
-Check: terraform output -raw log_analytics_workspace_resource_id (in landing-zones/)
+Check: terraform output -raw log_analytics_workspace_resource_id (in 02-landing-zones/)
 Ensure workspace exists and managed identity has access
 ```
 
@@ -340,15 +340,15 @@ To remove everything (reverse order):
 
 ```bash
 # Step 1: Destroy workloads
-cd workloads/web-app
+cd 03-workloads/web-app
 terraform destroy -auto-approve
 
 # Step 2: Destroy landing zone
-cd ../../landing-zones
+cd ../../02-landing-zones
 terraform destroy -auto-approve
 
 # Step 3: Destroy ALZ foundation
-cd ../alz-foundation
+cd ../01-foundation
 terraform destroy -auto-approve
 ```
 
@@ -361,7 +361,7 @@ terraform destroy -auto-approve
 | Step | Directory | Duration | Resources | Prerequisites |
 |------|-----------|----------|-----------|---------------|
 | 1 | `alz-foundation/` | 5-10 min | ~540 | Azure subscription |
-| 2 | `landing-zones/` | 2-3 min | ~3 | Step 1 complete |
+| 2 | `02-landing-zones/` | 2-3 min | ~3 | Step 1 complete |
 | 3 | `workloads/web-app/` | 3-5 min | ~5 | Step 2 complete + 2-5 min wait |
 
 **Total Time**: ~15-20 minutes for complete deployment

@@ -13,7 +13,7 @@ A clear and concise description of what the bug is.
 - **Terraform Version**: [e.g., 1.9.0]
 - **Azure CLI Version**: [e.g., 2.65.0]
 - **Operating System**: [e.g., Windows 11, macOS 14, Ubuntu 22.04]
-- **Module Being Deployed**: [e.g., alz-foundation, landing-zones/corp, workloads/web-app]
+- **Module Being Deployed**: [e.g., 01-foundation, 02-landing-zones/corp, 03-workloads/web-app]
 
 ## Steps to Reproduce
 1. Navigate to '...'

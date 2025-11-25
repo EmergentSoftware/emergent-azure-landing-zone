@@ -10,9 +10,9 @@
 > **⚠️ IMPORTANT: Deployment Order**  
 > See [DEPLOYMENT-ORDER.md](./DEPLOYMENT-ORDER.md) for the complete deployment guide.
 > 
-> 1. **alz-foundation/** - Deploy management groups & policies first
-> 2. **landing-zones/** - Place subscription in landing zone second  
-> 3. **workloads/** - Deploy application resources third
+> 1. **01-foundation/** - Deploy management groups & policies first
+> 2. **02-landing-zones/** - Place subscription in landing zone second  
+> 3. **03-workloads/** - Deploy application resources third
 
 ## 📖 About This Repository
 

@@ -25,6 +25,20 @@ data "azurerm_management_group" "landing_zone" {
   name = var.landing_zone_management_group_name
 }
 
+# Prepare common tags for all resources
+locals {
+  common_tags = merge(
+    var.tags,
+    var.common_tags,
+    {
+      Purpose     = "Landing Zone - Online"
+      LandingZone = var.landing_zone_name
+      ManagedBy   = "Terraform"
+      DeployedBy  = "AVM"
+    }
+  )
+}
+
 # Place the subscription into the landing zone management group
 resource "azurerm_management_group_subscription_association" "workload" {
   management_group_id = data.azurerm_management_group.landing_zone.id
@@ -42,16 +56,7 @@ module "networking_resource_group" {
 
   name     = "rg-${var.landing_zone_name}-networking-${var.location}"
   location = var.location
-
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Networking"
-      LandingZone = var.landing_zone_name
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags     = local.common_tags
 }
 
 # Virtual Network for landing zone workloads
@@ -67,16 +72,7 @@ module "virtual_network" {
   subnets = var.vnet_subnets
 
   dns_servers = var.vnet_dns_servers
-
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Networking"
-      LandingZone = var.landing_zone_name
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags        = local.common_tags
 }
 
 # =============================================================================
@@ -90,16 +86,7 @@ module "monitoring_resource_group" {
 
   name     = "rg-${var.landing_zone_name}-monitoring-${var.location}"
   location = var.location
-
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Monitoring"
-      LandingZone = var.landing_zone_name
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags     = local.common_tags
 }
 
 # Log Analytics Workspace for landing zone diagnostics
@@ -112,14 +99,5 @@ module "log_analytics_workspace" {
   location            = var.location
   sku                 = "PerGB2018"
   retention_in_days   = var.log_retention_days
-
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Monitoring"
-      LandingZone = var.landing_zone_name
-      ManagedBy   = "Terraform"
-      DeployedBy  = "AVM"
-    }
-  )
+  tags                = local.common_tags
 }

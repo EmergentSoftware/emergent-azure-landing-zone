@@ -6,6 +6,13 @@ This guide explains the correct sequence for deploying the Azure Landing Zone in
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│ Step 0: Bootstrap (One-Time Setup)                         │
+│ • Create Storage Account for Terraform state               │
+│ • Create blob containers for each layer                    │
+│ • Configure remote backend                                 │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
 │ Step 1: ALZ Foundation                                      │
 │ • Management Groups                                         │
 │ • Policy Definitions                                        │
@@ -27,6 +34,47 @@ This guide explains the correct sequence for deploying the Azure Landing Zone in
 │ • Connect to shared monitoring                             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+## Step 0: Bootstrap Terraform State Storage (One-Time Setup)
+
+**Directory**: `00-bootstrap/`
+
+**Purpose**: Creates Azure Storage Account and containers for storing Terraform state files.
+
+**Creates**:
+- Resource group for state storage
+- Storage account with versioning and soft delete
+- Blob containers for foundation, landing zones, and workloads
+
+**Commands**:
+```bash
+cd 00-bootstrap
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your subscription ID
+terraform init
+terraform plan
+terraform apply
+```
+
+**Duration**: ~2-3 minutes
+
+**Verify**:
+```bash
+# Save the storage account name for backend configuration
+terraform output storage_account_name
+
+# View backend configuration instructions
+terraform output -raw instructions
+```
+
+**Next Steps**:
+- Copy the backend configuration from output
+- Add backend blocks to 01-foundation, 02-landing-zones, and 03-workloads
+- See `00-bootstrap/README.md` for detailed backend setup
+
+**Wait Time**: Complete backend configuration before Step 1
+
+---
 
 ## Step 1: Deploy ALZ Foundation
 

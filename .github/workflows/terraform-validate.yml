@@ -21,6 +21,7 @@ jobs:
     strategy:
       matrix:
         directory:
+          - 00-bootstrap
           - 01-foundation
           - 01-foundation/modules/alz-wrapper
           - 02-landing-zones/corp

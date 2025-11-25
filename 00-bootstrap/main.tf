@@ -105,19 +105,19 @@ resource "azurerm_storage_account" "tfstate" {
 
 resource "azurerm_storage_container" "foundation" {
   name                  = "tfstate-foundation"
-  storage_account_name  = azurerm_storage_account.tfstate.name
+  storage_account_id    = azurerm_storage_account.tfstate.id
   container_access_type = "private"
 }
 
 resource "azurerm_storage_container" "landing_zones" {
   name                  = "tfstate-landing-zones"
-  storage_account_name  = azurerm_storage_account.tfstate.name
+  storage_account_id    = azurerm_storage_account.tfstate.id
   container_access_type = "private"
 }
 
 resource "azurerm_storage_container" "workloads" {
   name                  = "tfstate-workloads"
-  storage_account_name  = azurerm_storage_account.tfstate.name
+  storage_account_id    = azurerm_storage_account.tfstate.id
   container_access_type = "private"
 }
 
@@ -125,6 +125,6 @@ resource "azurerm_storage_container" "workloads" {
 resource "azurerm_storage_container" "additional" {
   for_each              = toset(var.additional_containers)
   name                  = each.value
-  storage_account_name  = azurerm_storage_account.tfstate.name
+  storage_account_id    = azurerm_storage_account.tfstate.id
   container_access_type = "private"
 }

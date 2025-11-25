@@ -5,17 +5,17 @@
 
 output "resource_group_name" {
   description = "Name of the resource group containing state storage"
-  value       = azurerm_resource_group.tfstate.name
+  value       = module.resource_group.name
 }
 
 output "storage_account_name" {
   description = "Name of the storage account for Terraform state"
-  value       = azurerm_storage_account.tfstate.name
+  value       = module.storage_account.name
 }
 
 output "storage_account_id" {
   description = "Resource ID of the storage account"
-  value       = azurerm_storage_account.tfstate.id
+  value       = module.storage_account.resource_id
 }
 
 output "foundation_container_name" {
@@ -35,15 +35,15 @@ output "workloads_container_name" {
 
 output "primary_access_key" {
   description = "Primary access key for the storage account (sensitive)"
-  value       = azurerm_storage_account.tfstate.primary_access_key
+  value       = module.storage_account.resource.primary_access_key
   sensitive   = true
 }
 
 output "backend_config_foundation" {
   description = "Backend configuration for 01-foundation layer"
   value = {
-    resource_group_name  = azurerm_resource_group.tfstate.name
-    storage_account_name = azurerm_storage_account.tfstate.name
+    resource_group_name  = module.resource_group.name
+    storage_account_name = module.storage_account.name
     container_name       = azurerm_storage_container.foundation.name
     key                  = "foundation.tfstate"
   }
@@ -52,8 +52,8 @@ output "backend_config_foundation" {
 output "backend_config_landing_zones" {
   description = "Backend configuration for 02-landing-zones layer"
   value = {
-    resource_group_name  = azurerm_resource_group.tfstate.name
-    storage_account_name = azurerm_storage_account.tfstate.name
+    resource_group_name  = module.resource_group.name
+    storage_account_name = module.storage_account.name
     container_name       = azurerm_storage_container.landing_zones.name
     key                  = "landing-zones.tfstate"
   }
@@ -62,8 +62,8 @@ output "backend_config_landing_zones" {
 output "backend_config_workloads" {
   description = "Backend configuration for 03-workloads layer"
   value = {
-    resource_group_name  = azurerm_resource_group.tfstate.name
-    storage_account_name = azurerm_storage_account.tfstate.name
+    resource_group_name  = module.resource_group.name
+    storage_account_name = module.storage_account.name
     container_name       = azurerm_storage_container.workloads.name
     key                  = "workloads.tfstate"
   }
@@ -84,8 +84,8 @@ output "instructions" {
 
   terraform {
     backend "azurerm" {
-      resource_group_name  = "${azurerm_resource_group.tfstate.name}"
-      storage_account_name = "${azurerm_storage_account.tfstate.name}"
+      resource_group_name  = "${module.resource_group.name}"
+      storage_account_name = "${module.storage_account.name}"
       container_name       = "${azurerm_storage_container.foundation.name}"
       key                  = "foundation.tfstate"
     }
@@ -95,8 +95,8 @@ output "instructions" {
 
   terraform {
     backend "azurerm" {
-      resource_group_name  = "${azurerm_resource_group.tfstate.name}"
-      storage_account_name = "${azurerm_storage_account.tfstate.name}"
+      resource_group_name  = "${module.resource_group.name}"
+      storage_account_name = "${module.storage_account.name}"
       container_name       = "${azurerm_storage_container.landing_zones.name}"
       key                  = "corp.tfstate"  # or "online.tfstate"
     }
@@ -106,17 +106,17 @@ output "instructions" {
 
   terraform {
     backend "azurerm" {
-      resource_group_name  = "${azurerm_resource_group.tfstate.name}"
-      storage_account_name = "${azurerm_storage_account.tfstate.name}"
+      resource_group_name  = "${module.resource_group.name}"
+      storage_account_name = "${module.storage_account.name}"
       container_name       = "${azurerm_storage_container.workloads.name}"
       key                  = "web-app.tfstate"  # or other workload name
     }
   }
 
   ========================================
-  Storage Account: ${azurerm_storage_account.tfstate.name}
-  Resource Group:  ${azurerm_resource_group.tfstate.name}
-  Location:        ${azurerm_resource_group.tfstate.location}
+  Storage Account: ${module.storage_account.name}
+  Resource Group:  ${module.resource_group.name}
+  Location:        ${module.resource_group.resource.location}
   ========================================
 
   EOT

@@ -1,6 +1,6 @@
 # =============================================================================
-# Example Workload: Web Application using Azure Verified Modules
-# This demonstrates deploying a compliant web app using AVM modules
+# Example Workload: Customer Portal using Azure Verified Modules
+# This demonstrates deploying a compliant portal application using AVM modules
 # =============================================================================
 
 terraform {

@@ -1,6 +1,6 @@
-# Web Application Workload using Azure Verified Modules
+# Portal Workload using Azure Verified Modules
 
-This example workload demonstrates deploying a production-ready web application using Azure Verified Modules (AVM) that complies with Azure Landing Zone policies.
+This example workload demonstrates deploying a production-ready customer portal using Azure Verified Modules (AVM) that complies with Azure Landing Zone policies.
 
 ## Architecture
 
@@ -26,7 +26,7 @@ Resource Group
 
 ## Compliance Features
 
-The web app is configured to comply with ALZ policies:
+The portal is configured to comply with ALZ policies:
 
 - ✅ **HTTPS Only**: Enforced at web app level
 - ✅ **TLS 1.2+**: Minimum TLS version configured
@@ -157,7 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:

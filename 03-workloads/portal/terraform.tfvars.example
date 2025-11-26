@@ -1,6 +1,6 @@
-# Example configuration for web app workload using AVM
-subscription_id = "00000000-0000-0000-0000-000000000000" # Replace with your subscription ID
-workload_name   = "demo"
+# Example configuration for portal workload using AVM
+subscription_id = "00000000-0000-0000-0000-000000000000" # Replace with acme-portal-dev or acme-portal-prod subscription ID
+workload_name   = "portal"
 environment     = "dev"
 location        = "eastus"
 

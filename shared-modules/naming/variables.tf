@@ -11,7 +11,7 @@ variable "suffix" {
 variable "prefix" {
   description = "Prefix to prepend to resource names. Typically includes organization or project identifiers."
   type        = list(string)
-  default     = []
+  default     = ["acme"]
 }
 
 variable "unique_seed" {

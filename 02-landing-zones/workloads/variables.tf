@@ -14,14 +14,14 @@ variable "workload_subscription_id" {
 }
 
 variable "landing_zone_name" {
-  description = "Name of the landing zone (e.g., 'corp-web-apps', 'corp-data')"
+  description = "Name of the landing zone (e.g., 'workloads', 'shared-services')"
   type        = string
 }
 
 variable "landing_zone_management_group_name" {
-  description = "Management group name from ALZ foundation (typically 'acme-landingzones-corp')"
+  description = "Management group name from ALZ foundation (typically 'acme-workloads')"
   type        = string
-  default     = "acme-landingzones-corp"
+  default     = "acme-workloads"
 }
 
 variable "location" {

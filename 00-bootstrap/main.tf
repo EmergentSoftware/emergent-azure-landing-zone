@@ -23,7 +23,8 @@ provider "azurerm" {
       prevent_deletion_if_contains_resources = false
     }
   }
-  subscription_id = var.subscription_id
+  subscription_id                 = var.subscription_id
+  resource_provider_registrations = "none"
 }
 
 # Get current Azure context
@@ -34,8 +35,9 @@ data "azurerm_client_config" "current" {}
 # =============================================================================
 
 module "naming" {
-  source = "../shared-modules/naming"
-  suffix = [var.environment, var.location]
+  source   = "../shared-modules/naming"
+  location = var.location
+  suffix   = [var.environment]
 }
 
 # Prepare common tags for all resources
@@ -105,7 +107,7 @@ module "storage_account" {
   local_user                 = {}
   managed_identities         = {}
   private_endpoints          = {}
-  queue_properties           = null
+  queue_properties           = {}
   role_assignments           = {}
   static_website             = {}
   share_properties           = null

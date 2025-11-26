@@ -1,0 +1,69 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Azure/Azure-Landing-Zones-Library/main/schemas/architecture_definition.json",
+  "name": "acme-alz",
+  "management_groups": [
+    {
+      "archetypes": ["root"],
+      "display_name": "ACME ALZ Root",
+      "exists": false,
+      "id": "acme-alz",
+      "parent_id": null
+    },
+    {
+      "archetypes": ["landing_zones", "corp"],
+      "display_name": "ACME Workloads",
+      "exists": false,
+      "id": "acme-workloads",
+      "parent_id": "acme-alz"
+    },
+    {
+      "archetypes": ["corp"],
+      "display_name": "ACME Portals",
+      "exists": false,
+      "id": "acme-portals",
+      "parent_id": "acme-workloads"
+    },
+    {
+      "archetypes": ["platform"],
+      "display_name": "ACME Platform",
+      "exists": false,
+      "id": "acme-platform",
+      "parent_id": "acme-alz"
+    },
+    {
+      "archetypes": ["sandbox"],
+      "display_name": "ACME Sandbox",
+      "exists": false,
+      "id": "acme-sandbox",
+      "parent_id": "acme-alz"
+    },
+    {
+      "archetypes": ["decommissioned"],
+      "display_name": "ACME Decommissioned",
+      "exists": false,
+      "id": "acme-decommissioned",
+      "parent_id": "acme-alz"
+    },
+    {
+      "archetypes": ["management"],
+      "display_name": "ACME Management",
+      "exists": false,
+      "id": "acme-management",
+      "parent_id": "acme-platform"
+    },
+    {
+      "archetypes": ["connectivity"],
+      "display_name": "ACME Connectivity",
+      "exists": false,
+      "id": "acme-connectivity",
+      "parent_id": "acme-platform"
+    },
+    {
+      "archetypes": ["identity"],
+      "display_name": "ACME Identity",
+      "exists": false,
+      "id": "acme-identity",
+      "parent_id": "acme-platform"
+    }
+  ]
+}

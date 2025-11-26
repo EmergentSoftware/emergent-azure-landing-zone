@@ -63,7 +63,9 @@ variable "containers" {
   type        = list(string)
   default = [
     "tfstate-foundation",
-    "tfstate-workloads",
+    "tfstate-connectivity",
+    "tfstate-identity",
+    "tfstate-management",
     "tfstate-portal-dev",
     "tfstate-portal-prod"
   ]

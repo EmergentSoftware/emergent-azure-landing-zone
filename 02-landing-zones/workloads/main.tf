@@ -1,6 +1,6 @@
 # =============================================================================
-# Landing Zone Subscription Placement - Corporate
-# This places a subscription into the corporate landing zone management group
+# Landing Zone Subscription Placement - Workloads
+# This places a subscription into the workloads landing zone management group
 # Deploy this AFTER alz-foundation and BEFORE workloads
 # =============================================================================
 
@@ -40,7 +40,7 @@ locals {
     var.tags,
     var.common_tags,
     {
-      Purpose     = "Landing Zone - Corp"
+      Purpose     = "Landing Zone - Workloads"
       LandingZone = var.landing_zone_name
       ManagedBy   = "Terraform"
       DeployedBy  = "AVM"

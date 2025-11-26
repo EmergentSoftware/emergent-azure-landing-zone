@@ -23,7 +23,7 @@ output "containers" {
   value = {
     for name in var.containers : name => {
       name = module.containers[name].name
-      id   = module.containers[name].resource_id
+      id   = module.containers[name].id
     }
   }
 }
@@ -38,13 +38,43 @@ output "backend_config_foundation" {
   }
 }
 
-output "backend_config_workloads" {
-  description = "Backend configuration for workloads"
+output "backend_config_connectivity" {
+  description = "Backend configuration for connectivity landing zone"
   value = {
     resource_group_name  = module.resource_group.name
     storage_account_name = module.storage_account.name
-    container_name       = module.containers["tfstate-workloads"].name
-    key                  = "workloads.tfstate"
+    container_name       = module.containers["tfstate-connectivity"].name
+    key                  = "connectivity.tfstate"
+  }
+}
+
+output "backend_config_identity" {
+  description = "Backend configuration for identity landing zone"
+  value = {
+    resource_group_name  = module.resource_group.name
+    storage_account_name = module.storage_account.name
+    container_name       = module.containers["tfstate-identity"].name
+    key                  = "identity.tfstate"
+  }
+}
+
+output "backend_config_management" {
+  description = "Backend configuration for management landing zone"
+  value = {
+    resource_group_name  = module.resource_group.name
+    storage_account_name = module.storage_account.name
+    container_name       = module.containers["tfstate-management"].name
+    key                  = "management.tfstate"
+  }
+}
+
+output "backend_config_workloads" {
+  description = "Backend configuration for workloads (deprecated - use specific workload configs)"
+  value = {
+    resource_group_name  = module.resource_group.name
+    storage_account_name = module.storage_account.name
+    container_name       = "deprecated-use-specific-workload"
+    key                  = "deprecated.tfstate"
   }
 }
 
@@ -85,19 +115,52 @@ output "instructions" {
     backend "azurerm" {
       resource_group_name  = "${module.resource_group.name}"
       storage_account_name = "${module.storage_account.name}"
-      container_name       = "${module.foundation_container.name}"
+      container_name       = "tfstate-foundation"
       key                  = "foundation.tfstate"
     }
   }
 
-  ### For 02-landing-zones/corp/main.tf:
+  ### For 02-landing-zones/connectivity/main.tf:
 
   terraform {
     backend "azurerm" {
       resource_group_name  = "${module.resource_group.name}"
       storage_account_name = "${module.storage_account.name}"
-      container_name       = "${module.corp_container.name}"
-      key                  = "corp.tfstate"
+      container_name       = "tfstate-connectivity"
+      key                  = "connectivity.tfstate"
+    }
+  }
+
+  ### For 02-landing-zones/identity/main.tf:
+
+  terraform {
+    backend "azurerm" {
+      resource_group_name  = "${module.resource_group.name}"
+      storage_account_name = "${module.storage_account.name}"
+      container_name       = "tfstate-identity"
+      key                  = "identity.tfstate"
+    }
+  }
+
+  ### For 02-landing-zones/management/main.tf:
+
+  terraform {
+    backend "azurerm" {
+      resource_group_name  = "${module.resource_group.name}"
+      storage_account_name = "${module.storage_account.name}"
+      container_name       = "tfstate-management"
+      key                  = "management.tfstate"
+    }
+  }
+
+  ### For 02-landing-zones/workloads/portals-dev/main.tf:
+
+  terraform {
+    backend "azurerm" {
+      resource_group_name  = "${module.resource_group.name}"
+      storage_account_name = "${module.storage_account.name}"
+      container_name       = "tfstate-portal-dev"
+      key                  = "portal-dev.tfstate"
     }
   }
 
@@ -107,7 +170,7 @@ output "instructions" {
     backend "azurerm" {
       resource_group_name  = "${module.resource_group.name}"
       storage_account_name = "${module.storage_account.name}"
-      container_name       = "${module.portal_dev_container.name}"
+      container_name       = "tfstate-portal-dev"
       key                  = "portal-dev.tfstate"
     }
   }
@@ -118,7 +181,7 @@ output "instructions" {
     backend "azurerm" {
       resource_group_name  = "${module.resource_group.name}"
       storage_account_name = "${module.storage_account.name}"
-      container_name       = "${module.portal_prod_container.name}"
+      container_name       = "tfstate-portal-prod"
       key                  = "portal-prod.tfstate"
     }
   }
@@ -127,6 +190,7 @@ output "instructions" {
   Storage Account: ${module.storage_account.name}
   Resource Group:  ${module.resource_group.name}
   Location:        ${var.location}
+  Containers:      ${join(", ", var.containers)}
   ========================================
 
   EOT

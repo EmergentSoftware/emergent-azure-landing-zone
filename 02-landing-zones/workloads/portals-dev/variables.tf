@@ -27,6 +27,69 @@ variable "location" {
   default     = "eastus"
 }
 
+# Networking Variables
+variable "create_virtual_network" {
+  description = "Whether to create a virtual network for this landing zone"
+  type        = bool
+  default     = true
+}
+
+variable "vnet_address_space" {
+  description = "Address space for the virtual network"
+  type        = list(string)
+  default     = ["10.200.0.0/16"]
+}
+
+variable "vnet_subnets" {
+  description = "Map of subnets to create in the virtual network"
+  type = map(object({
+    name             = string
+    address_prefixes = list(string)
+    service_endpoints_with_location = optional(list(object({
+      service   = string
+      locations = optional(list(string), ["*"])
+    })), [])
+    delegations = optional(list(object({
+      name = string
+      service_delegation = object({
+        name = string
+      })
+    })), [])
+  }))
+  default = {
+    webapp = {
+      name             = "subnet-webapp"
+      address_prefixes = ["10.200.1.0/24"]
+      delegations = [{
+        name = "delegation"
+        service_delegation = {
+          name = "Microsoft.Web/serverFarms"
+        }
+      }]
+    }
+    privateendpoints = {
+      name             = "subnet-privateendpoints"
+      address_prefixes = ["10.200.2.0/24"]
+    }
+    data = {
+      name             = "subnet-data"
+      address_prefixes = ["10.200.3.0/24"]
+      service_endpoints_with_location = [
+        { service = "Microsoft.Sql" },
+        { service = "Microsoft.Storage" }
+      ]
+    }
+  }
+}
+
+variable "vnet_dns_servers" {
+  description = "DNS servers configuration for the virtual network"
+  type = object({
+    dns_servers = list(string)
+  })
+  default = null
+}
+
 # Monitoring Variables
 variable "create_log_analytics" {
   description = "Whether to create a Log Analytics workspace for this landing zone"

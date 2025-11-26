@@ -13,6 +13,27 @@ output "subscription_id" {
   value       = var.subscription_id
 }
 
+# Networking Outputs
+output "virtual_network_id" {
+  description = "The resource ID of the virtual network (if created)"
+  value       = var.create_virtual_network ? module.virtual_network[0].resource_id : null
+}
+
+output "virtual_network_name" {
+  description = "The name of the virtual network (if created)"
+  value       = var.create_virtual_network ? module.virtual_network[0].name : null
+}
+
+output "subnets" {
+  description = "Map of subnet names to their resource IDs (if created)"
+  value       = var.create_virtual_network ? module.virtual_network[0].subnets : {}
+}
+
+output "networking_resource_group_name" {
+  description = "The name of the networking resource group (if created)"
+  value       = var.create_virtual_network ? module.networking_resource_group[0].name : null
+}
+
 # Monitoring Outputs
 output "log_analytics_workspace_id" {
   description = "The resource ID of the Log Analytics workspace (if created)"

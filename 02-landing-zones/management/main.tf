@@ -29,8 +29,64 @@ data "azurerm_management_group" "management" {
   name = var.management_group_name
 }
 
+# =============================================================================
+# Naming Module for Consistent Azure Resource Naming
+# =============================================================================
+
+module "naming" {
+  source   = "../../shared-modules/naming"
+  location = var.location
+  suffix   = ["mgmt", var.environment]
+}
+
+# Prepare common tags for all resources
+locals {
+  common_tags = merge(
+    var.tags,
+    var.common_tags,
+    {
+      Purpose         = "Landing Zone - Management"
+      LandingZone     = "management"
+      Environment     = var.environment
+      ManagementGroup = var.management_group_name
+      ManagedBy       = "Terraform"
+      DeployedBy      = "AVM"
+    }
+  )
+}
+
 # Place the management subscription into the acme-management management group
 resource "azurerm_management_group_subscription_association" "management" {
   management_group_id = data.azurerm_management_group.management.id
   subscription_id     = "/subscriptions/${var.subscription_id}"
+}
+
+# =============================================================================
+# Networking Resources using AVM Wrapper Modules
+# =============================================================================
+
+# Resource Group for networking resources
+module "networking_resource_group" {
+  count  = var.create_virtual_network ? 1 : 0
+  source = "../../shared-modules/resource-group"
+
+  name     = "${module.naming.resource_group.name}-mgmt-net"
+  location = var.location
+  tags     = local.common_tags
+}
+
+# Virtual Network for management tools
+module "virtual_network" {
+  count  = var.create_virtual_network ? 1 : 0
+  source = "../../shared-modules/virtual-network"
+
+  name                = module.naming.virtual_network.name_unique
+  resource_group_name = module.networking_resource_group[0].name
+  location            = var.location
+  address_space       = var.vnet_address_space
+
+  subnets = var.vnet_subnets
+
+  dns_servers = var.vnet_dns_servers
+  tags        = local.common_tags
 }

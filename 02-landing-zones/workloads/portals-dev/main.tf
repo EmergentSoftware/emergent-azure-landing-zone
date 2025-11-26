@@ -34,8 +34,9 @@ data "azurerm_management_group" "portals" {
 # =============================================================================
 
 module "naming" {
-  source = "../../../shared-modules/naming"
-  suffix = [var.environment, var.location]
+  source   = "../../../shared-modules/naming"
+  location = var.location
+  suffix   = ["portals", var.environment]
 }
 
 # Prepare common tags for all resources
@@ -44,12 +45,12 @@ locals {
     var.tags,
     var.common_tags,
     {
-      Purpose          = "Landing Zone - Portal Dev"
-      LandingZone      = "portals-dev"
-      Environment      = var.environment
-      ManagementGroup  = var.management_group_name
-      ManagedBy        = "Terraform"
-      DeployedBy       = "AVM"
+      Purpose         = "Landing Zone - Portal Dev"
+      LandingZone     = "portals-dev"
+      Environment     = var.environment
+      ManagementGroup = var.management_group_name
+      ManagedBy       = "Terraform"
+      DeployedBy      = "AVM"
     }
   )
 }
@@ -61,6 +62,36 @@ resource "azurerm_management_group_subscription_association" "portal_dev" {
 }
 
 # =============================================================================
+# Networking Resources using AVM Wrapper Modules
+# =============================================================================
+
+# Resource Group for networking resources
+module "networking_resource_group" {
+  count  = var.create_virtual_network ? 1 : 0
+  source = "../../../shared-modules/resource-group"
+
+  name     = "${module.naming.resource_group.name}-portal-net"
+  location = var.location
+  tags     = local.common_tags
+}
+
+# Virtual Network for portal applications
+module "virtual_network" {
+  count  = var.create_virtual_network ? 1 : 0
+  source = "../../../shared-modules/virtual-network"
+
+  name                = module.naming.virtual_network.name_unique
+  resource_group_name = module.networking_resource_group[0].name
+  location            = var.location
+  address_space       = var.vnet_address_space
+
+  subnets = var.vnet_subnets
+
+  dns_servers = var.vnet_dns_servers
+  tags        = local.common_tags
+}
+
+# =============================================================================
 # Monitoring Resources using AVM Wrapper Modules
 # =============================================================================
 
@@ -69,7 +100,7 @@ module "monitoring_resource_group" {
   count  = var.create_log_analytics ? 1 : 0
   source = "../../../shared-modules/resource-group"
 
-  name     = "${module.naming.resource_group.name}-monitoring"
+  name     = "${module.naming.resource_group.name}-portal-mon"
   location = var.location
   tags     = local.common_tags
 }

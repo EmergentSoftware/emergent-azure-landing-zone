@@ -11,10 +11,6 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
-    }
   }
 
   # Bootstrap uses local state - this is the only layer without remote state
@@ -27,7 +23,8 @@ provider "azurerm" {
       prevent_deletion_if_contains_resources = false
     }
   }
-  subscription_id = var.subscription_id
+  subscription_id                 = var.subscription_id
+  resource_provider_registrations = "none"
 }
 
 # Get current Azure context
@@ -38,16 +35,9 @@ data "azurerm_client_config" "current" {}
 # =============================================================================
 
 module "naming" {
-  source = "../shared-modules/naming"
-  suffix = [var.environment, var.location]
-}
-
-# Generate a random suffix for storage account name (must be globally unique)
-resource "random_string" "storage_suffix" {
-  length  = 6
-  special = false
-  upper   = false
-  numeric = true
+  source   = "../shared-modules/naming"
+  location = var.location
+  suffix   = [var.environment]
 }
 
 # Prepare common tags for all resources
@@ -68,8 +58,7 @@ locals {
 # =============================================================================
 
 module "resource_group" {
-  source  = "Azure/avm-res-resources-resourcegroup/azurerm"
-  version = "0.2.1"
+  source = "../shared-modules/resource-group"
 
   name     = module.naming.resource_group.name_unique
   location = var.location
@@ -81,10 +70,9 @@ module "resource_group" {
 # =============================================================================
 
 module "storage_account" {
-  source  = "Azure/avm-res-storage-storageaccount/azurerm"
-  version = "0.4.0"
+  source = "../shared-modules/storage-account"
 
-  name                = "${module.naming.storage_account.name}${random_string.storage_suffix.result}"
+  name                = module.naming.storage_account.name_unique
   location            = var.location
   resource_group_name = module.resource_group.name
 
@@ -119,7 +107,7 @@ module "storage_account" {
   local_user                 = {}
   managed_identities         = {}
   private_endpoints          = {}
-  queue_properties           = null
+  queue_properties           = {}
   role_assignments           = {}
   static_website             = {}
   share_properties           = null
@@ -146,31 +134,9 @@ module "storage_account" {
 # Blob Containers for Each Deployment Layer
 # =============================================================================
 
-module "foundation_container" {
-  source = "../shared-modules/storage-container"
-
-  name               = "tfstate-foundation"
-  storage_account_id = module.storage_account.resource_id
-}
-
-module "landing_zones_container" {
-  source = "../shared-modules/storage-container"
-
-  name               = "tfstate-landing-zones"
-  storage_account_id = module.storage_account.resource_id
-}
-
-module "workloads_container" {
-  source = "../shared-modules/storage-container"
-
-  name               = "tfstate-workloads"
-  storage_account_id = module.storage_account.resource_id
-}
-
-# Optional: Create additional containers for different environments
-module "additional_containers" {
+module "containers" {
   source   = "../shared-modules/storage-container"
-  for_each = toset(var.additional_containers)
+  for_each = toset(var.containers)
 
   name               = each.value
   storage_account_id = module.storage_account.resource_id

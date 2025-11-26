@@ -1,11 +1,16 @@
 output "management_group_id" {
-  description = "The ID of the landing zone management group"
-  value       = data.azurerm_management_group.landing_zone.id
+  description = "The ID of the management management group"
+  value       = data.azurerm_management_group.management.id
 }
 
 output "subscription_association_id" {
   description = "The ID of the subscription association"
-  value       = azurerm_management_group_subscription_association.workload.id
+  value       = azurerm_management_group_subscription_association.management.id
+}
+
+output "subscription_id" {
+  description = "The management subscription ID"
+  value       = var.subscription_id
 }
 
 # Networking Outputs
@@ -27,20 +32,4 @@ output "subnets" {
 output "networking_resource_group_name" {
   description = "The name of the networking resource group (if created)"
   value       = var.create_virtual_network ? module.networking_resource_group[0].name : null
-}
-
-# Monitoring Outputs
-output "log_analytics_workspace_id" {
-  description = "The resource ID of the Log Analytics workspace (if created)"
-  value       = var.create_log_analytics ? module.log_analytics_workspace[0].resource_id : null
-}
-
-output "log_analytics_workspace_resource_id" {
-  description = "The resource ID of the Log Analytics workspace for use in workloads (if created)"
-  value       = var.create_log_analytics ? module.log_analytics_workspace[0].resource_id : ""
-}
-
-output "monitoring_resource_group_name" {
-  description = "The name of the monitoring resource group (if created)"
-  value       = var.create_log_analytics ? module.monitoring_resource_group[0].name : null
 }

@@ -1,298 +1,174 @@
 # Landing Zone Subscription Placement
 
-This directory contains configurations for placing Azure subscriptions into landing zone management groups with shared networking and monitoring resources.
+This directory contains configurations for placing Azure subscriptions into their respective management groups.
 
 ## Structure
 
-Each landing zone type has its own directory:
-
 ```
 landing-zones/
-├── corp/                    Corporate landing zones (internal apps)
+├── connectivity/           Platform - Connectivity subscription
 │   ├── main.tf
 │   ├── variables.tf
 │   ├── outputs.tf
 │   └── terraform.tfvars.example
-├── online/                  Online landing zones (internet-facing apps)
+├── identity/              Platform - Identity subscription
 │   ├── main.tf
 │   ├── variables.tf
 │   ├── outputs.tf
 │   └── terraform.tfvars.example
-└── README.md               This file
+├── management/            Platform - Management subscription
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars.example
+├── workloads/             Workload landing zones
+│   └── portals-dev/       Portal dev subscription
+│       ├── main.tf
+│       ├── variables.tf
+│       ├── outputs.tf
+│       └── terraform.tfvars.example
+└── README.md              This file
 ```
 
-## Landing Zone Types
+## Platform Landing Zones
 
-### Corporate (`corp/`)
-For internal, corporate applications:
-- **Management Group**: `acme-landingzones-corp`
-- **Network Range**: `10.0.0.0/16` (default)
-- **Connectivity**: Can be connected to on-premises via ExpressRoute/VPN
-- **DNS**: Typically uses corporate DNS servers
-- **Use Cases**: Intranet apps, internal APIs, employee portals
+### Connectivity
+- **Management Group**: `acme-connectivity`
+- **Subscription ID**: `c82e0943-3765-49ff-97ff-92855167f3ea`
+- **Purpose**: Hub networking, VPN/ExpressRoute, firewalls
+- **Deployment**: `cd connectivity && terraform apply`
 
-### Online (`online/`)
-For internet-facing, public applications:
-- **Management Group**: `acme-landingzones-online`
-- **Network Range**: `10.1.0.0/16` (default)
-- **Connectivity**: Internet-facing with public endpoints
-- **DNS**: Azure default DNS
-- **Use Cases**: Public websites, customer APIs, e-commerce
+### Identity
+- **Management Group**: `acme-identity`
+- **Subscription ID**: `05783002-9abe-4167-9270-694d4e9bb733`
+- **Purpose**: Domain controllers, AD Connect, identity services
+- **Deployment**: `cd identity && terraform apply`
+
+### Management
+- **Management Group**: `acme-management`
+- **Subscription ID**: `1302f5fd-f3b5-4eda-909c-e3ae2dfee3d6`
+- **Purpose**: Monitoring, backup, automation, governance tools
+- **Deployment**: `cd management && terraform apply`
+
+## Workload Landing Zones
+
+### Portals Dev
+- **Management Group**: `acme-portals`
+- **Subscription ID**: `9a877ddf-9796-43a8-a557-f6af1df195bf`
+- **Purpose**: Portal application development environment
+- **Deployment**: `cd workloads/portals-dev && terraform apply`
 
 ## Quick Start
 
-### 1. Choose Landing Zone Type
+### Platform Subscriptions (Deploy First)
 
-Decide whether your workload is corporate (internal) or online (public-facing).
-
-### 2. Configure the Landing Zone
+These place platform subscriptions into their respective management groups:
 
 ```bash
-# For Corporate Landing Zone
-cd landing-zones/corp
-cp terraform.tfvars.example terraform.tfvars
+# Connectivity subscription
+cd connectivity
+terraform init -backend-config=../../00-bootstrap/backend-config-connectivity.txt
+terraform apply
 
-# OR for Online Landing Zone
-cd landing-zones/online
-cp terraform.tfvars.example terraform.tfvars
-```
+# Identity subscription
+cd ../identity
+terraform init -backend-config=../../00-bootstrap/backend-config-identity.txt
+terraform apply
 
-### 3. Edit Configuration
-
-Edit `terraform.tfvars`:
-- Update `landing_zone_name` (e.g., "corp-web-apps" or "online-apis")
-- Customize network address space if needed
-- Configure subnets for your workload types
-- Set custom DNS servers (corp) or use Azure default (online)
-
-### 4. Deploy
-
-```bash
-terraform init
-terraform plan
+# Management subscription
+cd ../management
+terraform init -backend-config=../../00-bootstrap/backend-config-management.txt
 terraform apply
 ```
 
-### 5. Get Outputs
+### Workload Subscriptions (Deploy After Platform)
 
 ```bash
-# Virtual Network ID (for workload integration)
-terraform output -raw virtual_network_id
-
-# Subnet IDs (for deploying resources)
-terraform output subnets
-
-# Log Analytics workspace (for diagnostics)
-terraform output -raw log_analytics_workspace_resource_id
+# Portal dev subscription
+cd workloads/portals-dev
+terraform init -backend-config=../../../00-bootstrap/backend-config-portal-dev.txt
+terraform apply
 ```
 
-## What Each Landing Zone Creates
+## What Each Layer Creates
 
-### Networking Resources
-- **Resource Group**: `rg-{landing_zone_name}-networking-{location}`
-- **Virtual Network**: `vnet-{landing_zone_name}-{location}`
-  - Subnets as configured (default, webapp, data, etc.)
-  - Service endpoints enabled per subnet
-  - Optional custom DNS servers
-
-### Monitoring Resources
-- **Resource Group**: `rg-{landing_zone_name}-monitoring-{location}`
-- **Log Analytics Workspace**: `log-{landing_zone_name}-{location}`
-  - Configurable retention period
-  - Shared by all workloads in this landing zone
-
-### Management
-- **Subscription Association**: Links subscription to management group
+### Platform Landing Zones
+Platform landing zones only create the subscription association:
+- **Subscription Association**: Links subscription to appropriate management group
   - Inherits policies from ALZ foundation
   - Enables governance and compliance
 
-## Example: Corporate Web Applications
+### Workload Landing Zones
+Workload landing zones (like portals-dev) create:
+
+
+
+### Monitoring Resources
+- **Resource Group**: `rg-{environment}-monitoring-{location}`
+- **Log Analytics Workspace**: `log-{environment}-{location}`
+  - Configurable retention period (default 30 days)
+  - Shared by all workloads in this environment
+
+### Subscription Association
+- Links subscription to management group
+- Inherits policies from ALZ foundation
+
+## Example: Portal Dev Deployment
 
 ```bash
-cd landing-zones/corp
-```
-
-Edit `terraform.tfvars`:
-```hcl
-landing_zone_name = "corp-web-apps"
-location          = "eastus"
-
-vnet_address_space = ["10.10.0.0/16"]
-
-vnet_subnets = {
-  frontend = {
-    address_prefixes  = ["10.10.1.0/24"]
-    service_endpoints = ["Microsoft.Web"]
-  }
-  backend = {
-    address_prefixes  = ["10.10.2.0/24"]
-    service_endpoints = ["Microsoft.Web", "Microsoft.Sql"]
-  }
-  database = {
-    address_prefixes  = ["10.10.3.0/24"]
-    service_endpoints = ["Microsoft.Sql", "Microsoft.Storage"]
-  }
-}
-
-vnet_dns_servers = ["10.100.1.4", "10.100.1.5"]  # Corporate DNS
-```
-
-Deploy:
-```bash
+cd workloads/portals-dev
+terraform init -backend-config=../../../00-bootstrap/backend-config-portal-dev.txt
 terraform apply
 ```
 
-## Example: Online API Platform
-
+Get the Log Analytics workspace ID for use in workload deployments:
 ```bash
-cd landing-zones/online
+terraform output -raw log_analytics_workspace_resource_id
 ```
-
-Edit `terraform.tfvars`:
-```hcl
-landing_zone_name = "online-public-apis"
-location          = "eastus"
-
-vnet_address_space = ["10.20.0.0/16"]
-
-vnet_subnets = {
-  apim = {
-    address_prefixes  = ["10.20.1.0/24"]
-    service_endpoints = ["Microsoft.Web", "Microsoft.KeyVault"]
-  }
-  backend = {
-    address_prefixes  = ["10.20.2.0/24"]
-    service_endpoints = ["Microsoft.Web", "Microsoft.Sql", "Microsoft.Storage"]
-  }
-}
-
-# Use Azure default DNS for internet-facing workloads
-vnet_dns_servers = null
-```
-
-Deploy:
-```bash
-terraform apply
-```
-
-## Multiple Landing Zones
-
-You can create multiple instances of the same type:
-
-### Option A: Terraform Workspaces
-
-```bash
-cd landing-zones/corp
-
-# Create workspace for dev environment
-terraform workspace new corp-dev
-terraform apply -var="landing_zone_name=corp-dev-apps"
-
-# Create workspace for prod environment
-terraform workspace new corp-prod
-terraform apply -var="landing_zone_name=corp-prod-apps"
-```
-
-### Option B: Separate Directories
-
-```bash
-mkdir -p landing-zones/corp-dev
-mkdir -p landing-zones/corp-prod
-
-# Create symlinks to shared files
-cd landing-zones/corp-dev
-ln -s ../corp/main.tf .
-ln -s ../corp/variables.tf .
-ln -s ../corp/outputs.tf .
-
-# Create unique terraform.tfvars for each
-```
-
-## Purpose
-
-In Azure Landing Zones architecture:
-1. **ALZ Foundation** creates the management group hierarchy and policies
-2. **Landing Zone Placement** (this) associates subscriptions with management groups
-3. **Workloads** deploy application resources into the placed subscriptions
 
 ## Deployment Order
 
 ```
-Step 1: alz-foundation/     → Creates management groups & policies
+Step 1: 01-foundation/          → Creates management groups & policies
          ↓
-Step 2: landing-zones/      → Places subscription into management group (THIS)
-         ↓
-Step 3: workloads/web-app/  → Deploys application resources
+Step 2: 02-landing-zones/       → Places subscriptions into management groups (THIS)
+         ↓  
+Step 3: 03-workloads/           → Deploys application resources
 ```
 
-## Management Group Options
+## Backend Configuration
 
-Based on the ALZ foundation, you can place subscriptions into:
+Each landing zone uses a separate Terraform state container generated by `00-bootstrap`:
 
-- **`acme-landingzones-corp`** - For corporate/internal applications
-  - Connected to on-premises via ExpressRoute/VPN
-  - Stricter compliance and security policies
-  
-- **`acme-landingzones-online`** - For internet-facing applications
-  - Public endpoints allowed
-  - More flexible networking
+- **connectivity**: `backend-config-connectivity.txt` → `tfstate-connectivity` container
+- **identity**: `backend-config-identity.txt` → `tfstate-identity` container
+- **management**: `backend-config-management.txt` → `tfstate-management` container
+- **portals-dev**: `backend-config-portal-dev.txt` → `tfstate-portal-dev` container
 
-- **`acme-platform`** - For platform services (monitoring, connectivity, identity)
+## Verification
 
-## Quick Start
+After deployment, verify subscriptions are in the correct management groups:
 
-### 1. Deploy ALZ Foundation First
+```powershell
+# Check connectivity subscription
+az account management-group show --name acme-connectivity
 
-```bash
-cd alz-foundation
-terraform init
-terraform plan
-terraform apply
+# Check identity subscription
+az account management-group show --name acme-identity
+
+# Check management subscription
+az account management-group show --name acme-management
+
+# Check portals dev subscription
+az account management-group show --name acme-portals
 ```
 
-### 2. Configure Landing Zone
+## Notes
 
-```bash
-cd ../landing-zones
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your values
-```
-
-Key settings:
-- `landing_zone_management_group_name`: Use `acme-landingzones-corp` or `acme-landingzones-online`
-- `workload_subscription_id`: The subscription to place in the landing zone
-
-### 3. Deploy Landing Zone Placement
-
-```bash
-terraform init
-terraform plan
-terraform apply
-```
-
-### 4. Get Log Analytics Workspace ID
-
-```bash
-terraform output log_analytics_workspace_resource_id
-```
-
-Copy this value - you'll use it in your workload deployments.
-
-### 5. Deploy Workloads
-
-```bash
-cd ../workloads/web-app
-# Update terraform.tfvars with the Log Analytics workspace ID from step 4
-terraform init
-terraform plan
-terraform apply
-```
-
-## What This Creates
-
-### Subscription Association
-- Places your subscription under the specified management group
-- Inherits all policies from the management group hierarchy
+- Platform subscriptions (connectivity, identity, management) only create subscription associations
+- Workload subscriptions (portals-dev) also create Log Analytics workspace for monitoring
+- All subscription IDs are set as defaults in `variables.tf` files
+- Only `tenant_id` needs to be provided in `terraform.tfvars`
 
 ### Optional Monitoring Resources
 If `create_log_analytics = true`:
@@ -303,19 +179,19 @@ These can be shared by all workloads in this landing zone.
 
 ## Example Scenarios
 
-### Scenario 1: Corporate Web Application
+### Scenario 1: Web Application
 
 ```hcl
-landing_zone_name                  = "corp-web-apps"
-landing_zone_management_group_name = "acme-landingzones-corp"
+landing_zone_name                  = "web-apps"
+landing_zone_management_group_name = "acme-workloads"
 workload_subscription_id           = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
-### Scenario 2: Public API Platform
+### Scenario 2: API Platform
 
 ```hcl
-landing_zone_name                  = "online-public-apis"
-landing_zone_management_group_name = "acme-landingzones-online"
+landing_zone_name                  = "public-apis"
+landing_zone_management_group_name = "acme-workloads"
 workload_subscription_id           = "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
 ```
 
@@ -420,5 +296,9 @@ terraform destroy
 
 This will:
 - Remove subscription from management group
-- Delete Log Analytics workspace and monitoring resources
-- Workloads will lose inherited policies
+- Delete Log Analytics workspace and monitoring resources## Notes
+
+- Platform subscriptions (connectivity, identity, management) only create subscription associations
+- Workload subscriptions (portals-dev) also create Log Analytics workspace for monitoring
+- All subscription IDs are set as defaults in `variables.tf` files
+- Only `tenant_id` needs to be provided in `terraform.tfvars`

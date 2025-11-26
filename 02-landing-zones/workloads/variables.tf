@@ -14,14 +14,14 @@ variable "workload_subscription_id" {
 }
 
 variable "landing_zone_name" {
-  description = "Name of the landing zone (e.g., 'online-public-apis', 'online-ecommerce')"
+  description = "Name of the landing zone (e.g., 'workloads', 'shared-services')"
   type        = string
 }
 
 variable "landing_zone_management_group_name" {
-  description = "Management group name from ALZ foundation (typically 'acme-landingzones-online')"
+  description = "Management group name from ALZ foundation (typically 'acme-workloads')"
   type        = string
-  default     = "acme-landingzones-online"
+  default     = "acme-workloads"
 }
 
 variable "location" {
@@ -40,7 +40,7 @@ variable "create_virtual_network" {
 variable "vnet_address_space" {
   description = "Address space for the virtual network"
   type        = list(string)
-  default     = ["10.1.0.0/16"]
+  default     = ["10.0.0.0/16"]
 }
 
 variable "vnet_subnets" {
@@ -60,21 +60,17 @@ variable "vnet_subnets" {
     })), [])
   }))
   default = {
-    frontend = {
-      name             = "subnet-frontend"
-      address_prefixes = ["10.1.1.0/24"]
-      service_endpoints_with_location = [
-        { service = "Microsoft.Web" },
-        { service = "Microsoft.Storage" }
-      ]
+    default = {
+      name             = "subnet-default"
+      address_prefixes = ["10.0.1.0/24"]
     }
-    backend = {
-      name             = "subnet-backend"
-      address_prefixes = ["10.1.2.0/24"]
+    webapp = {
+      name             = "subnet-webapp"
+      address_prefixes = ["10.0.2.0/24"]
       service_endpoints_with_location = [
         { service = "Microsoft.Web" },
-        { service = "Microsoft.Sql" },
-        { service = "Microsoft.Storage" }
+        { service = "Microsoft.Storage" },
+        { service = "Microsoft.KeyVault" }
       ]
     }
   }

@@ -16,12 +16,20 @@ terraform {
       version = "~> 0.20"
     }
   }
+
+  backend "azurerm" {
+    resource_group_name  = "acme-rg-prod-eus-vw01"
+    storage_account_name = "acmestprodeusvw01"
+    container_name       = "tfstate-foundation"
+    key                  = "foundation.tfstate"
+  }
 }
 
 provider "azurerm" {
   features {}
-  subscription_id = "00000000-0000-0000-0000-000000000000" # Replace with your subscription ID
-  tenant_id       = "00000000-0000-0000-0000-000000000000" # Replace with your tenant ID
+  subscription_id                 = var.subscription_id
+  tenant_id                       = var.tenant_id
+  resource_provider_registrations = "none"
 }
 
 # Configure the ALZ provider with library references
@@ -30,6 +38,9 @@ provider "alz" {
     {
       path = "platform/alz"
       ref  = "2025.09.0"
+    },
+    {
+      custom_url = "${path.root}/lib"
     }
   ]
 }
@@ -51,33 +62,16 @@ module "alz" {
   # Parent management group - use tenant root group
   parent_resource_id = data.azurerm_client_config.current.tenant_id
 
-  # Architecture definition - uses the default ALZ architecture
-  architecture_name = "alz"
+  # Architecture definition - uses custom ACME architecture with acme-alz prefix
+  architecture_name = "acme-alz"
 
   # Default location for policy managed identities
   location = var.default_location
 
-  # Optional: Configure hierarchy settings
+  # Configure hierarchy settings with ACME prefix
   management_group_hierarchy_settings = {
-    default_management_group_name            = "acme-alz"
+    default_management_group_name            = "acme-workloads"
     require_authorization_for_group_creation = true
-  }
-
-  # Optional: Modify policy assignments
-  policy_assignments_to_modify = {
-    alzroot = {
-      policy_assignments = {
-        # Modify allowed locations
-        Deny-Resource-Locations = {
-          enforcement_mode = "Default"
-          parameters = {
-            listOfAllowedLocations = jsonencode({
-              value = var.allowed_locations
-            })
-          }
-        }
-      }
-    }
   }
 
   # Enable telemetry

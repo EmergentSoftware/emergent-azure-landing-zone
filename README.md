@@ -10,10 +10,11 @@
 > **⚠️ IMPORTANT: Deployment Order**
 > See [DEPLOYMENT-ORDER.md](./DEPLOYMENT-ORDER.md) for the complete deployment guide.
 >
-> 0. **00-bootstrap/** - Create Terraform state storage (run once)
-> 1. **01-foundation/** - Deploy management groups & policies first
-> 2. **02-landing-zones/** - Place subscription in landing zone second
-> 3. **03-workloads/** - Deploy application resources third
+> 0. **00-pre-bootstrap/** - Create Azure subscriptions (run once, if needed)
+> 1. **00-bootstrap/** - Create Terraform state storage (run once)
+> 2. **01-foundation/** - Deploy management groups & policies first
+> 3. **02-landing-zones/** - Place subscription in landing zone second
+> 4. **03-workloads/** - Deploy application resources third
 
 ## 📖 About This Repository
 
@@ -23,7 +24,7 @@ This repository demonstrates deploying **Azure Landing Zones** using **Azure Ver
 - ✅ Production-ready Azure Landing Zone implementation
 - ✅ Uses official Azure Verified Modules (AVM)
 - ✅ Wrapper module pattern for version control and customization
-- ✅ Separate corporate and online landing zones
+- ✅ Simplified workloads landing zone
 - ✅ Complete networking and monitoring infrastructure
 - ✅ Example workload deployments
 - ✅ Comprehensive documentation
@@ -34,14 +35,12 @@ This deployment creates the following management group hierarchy:
 
 ```
 Tenant Root
-└── ALZ Root
+└── ACME ALZ Root
     ├── Platform
     │   ├── Management
     │   ├── Connectivity
     │   └── Identity
-    ├── Landing Zones
-    │   ├── Corp
-    │   └── Online
+    ├── Workloads
     ├── Sandbox
     └── Decommissioned
 ```
@@ -191,9 +190,7 @@ The module automatically creates a CAF-aligned hierarchy:
   - Management: Centralized logging and monitoring
   - Connectivity: Hub networking and connectivity
   - Identity: Identity and access management
-- **Landing Zones**: For application workloads
-  - Corp: Corporate/on-premises connected workloads
-  - Online: Internet-facing workloads
+- **Workloads**: For all application workloads
 - **Sandbox**: For experimentation and testing
 - **Decommissioned**: For resources being retired
 
@@ -257,11 +254,11 @@ module "alz" {
   subscription_placement = {
     prod_subscription = {
       subscription_id       = "00000000-0000-0000-0000-000000000000"
-      management_group_name = "corp"
+      management_group_name = "acme-workloads"
     }
     dev_subscription = {
       subscription_id       = "11111111-1111-1111-1111-111111111111"
-      management_group_name = "online"
+      management_group_name = "acme-workloads"
     }
   }
 }

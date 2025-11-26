@@ -1,0 +1,22 @@
+# =============================================================================
+# Portal Dev Landing Zone Configuration
+# =============================================================================
+
+# Azure AD tenant ID
+tenant_id = "0b79ac7b-0cc7-4d9f-a549-3b8cc894ac9b"
+
+# Portal dev subscription ID (already set as default in variables.tf)
+# subscription_id = "9a877ddf-9796-43a8-a557-f6af1df195bf"
+
+# Management group name (already set as default in variables.tf)
+# management_group_name = "acme-portals"
+
+# Environment (already set as default in variables.tf)
+# environment = "dev"
+
+# Location (already set as default in variables.tf)
+# location = "eastus"
+
+# Monitoring configuration (already set as defaults in variables.tf)
+# create_log_analytics = true
+# log_retention_days = 30

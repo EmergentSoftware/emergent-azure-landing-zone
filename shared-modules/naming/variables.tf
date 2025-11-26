@@ -2,6 +2,12 @@
 # Naming Module Variables
 # =============================================================================
 
+variable "location" {
+  description = "Azure region location. Will be abbreviated for naming (e.g., eastus -> eus, westus2 -> wus2)"
+  type        = string
+  default     = ""
+}
+
 variable "suffix" {
   description = "Suffix to append to resource names. Typically includes environment, location, or other identifiers."
   type        = list(string)
@@ -11,7 +17,7 @@ variable "suffix" {
 variable "prefix" {
   description = "Prefix to prepend to resource names. Typically includes organization or project identifiers."
   type        = list(string)
-  default     = []
+  default     = ["acme"]
 }
 
 variable "unique_seed" {

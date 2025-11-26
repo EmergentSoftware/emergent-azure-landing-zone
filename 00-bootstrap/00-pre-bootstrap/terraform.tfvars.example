@@ -1,0 +1,76 @@
+# Example terraform.tfvars for pre-bootstrap
+# Copy this file to terraform.tfvars and update with your values
+
+# =============================================================================
+# Required Variables
+# =============================================================================
+
+tenant_id                  = "00000000-0000-0000-0000-000000000000" # Your Azure AD tenant ID
+management_subscription_id = "00000000-0000-0000-0000-000000000000" # Temporary subscription to run this from
+
+# Billing model: EA, MCA, or CSP
+billing_model = "EA" # Change to "MCA" or "CSP" as needed
+
+# =============================================================================
+# Billing Scope (EA or MCA only - not required for CSP)
+# =============================================================================
+
+# For EA (Enterprise Agreement):
+# billing_scope_id = "/providers/Microsoft.Billing/billingAccounts/1234567/enrollmentAccounts/123456"
+
+# For MCA (Microsoft Customer Agreement):
+# billing_scope_id = "/providers/Microsoft.Billing/billingAccounts/abcd1234-5678-90ab-cdef-1234567890ab/billingProfiles/ABCD-EFGH-IJK-LMN/invoiceSections/OPQR-STUV-WXY-Z12"
+
+# For EA/MCA, set your billing scope:
+billing_scope_id = "/providers/Microsoft.Billing/billingAccounts/YOUR_BILLING_ACCOUNT/enrollmentAccounts/YOUR_ENROLLMENT"
+
+# =============================================================================
+# CSP Configuration (Required if billing_model = "CSP")
+# =============================================================================
+
+# Customer tenant ID for CSP subscriptions
+# csp_customer_tenant_id = "customer-tenant-id-here"
+
+# =============================================================================
+# Optional: Management Subscription Configuration
+# =============================================================================
+
+create_management_subscription   = true
+management_subscription_alias    = "sub-management-001"
+management_subscription_name     = "Management"
+
+# =============================================================================
+# Optional: Corp Subscriptions
+# =============================================================================
+
+corp_subscriptions = {
+  corp_001 = {
+    alias        = "sub-corp-001"
+    display_name = "Corp-001"
+    workload     = "Production"
+  }
+  # Add more corp subscriptions as needed
+  # corp_002 = {
+  #   alias        = "sub-corp-002"
+  #   display_name = "Corp-002"
+  #   workload     = "Production"
+  # }
+}
+
+# =============================================================================
+# Optional: Online Subscriptions
+# =============================================================================
+
+online_subscriptions = {
+  online_001 = {
+    alias        = "sub-online-001"
+    display_name = "Online-001"
+    workload     = "Production"
+  }
+  # Add more online subscriptions as needed
+  # online_002 = {
+  #   alias        = "sub-online-002"
+  #   display_name = "Online-002"
+  #   workload     = "Production"
+  # }
+}

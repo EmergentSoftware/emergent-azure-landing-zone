@@ -1,6 +1,7 @@
 variable "subscription_id" {
-  description = "The subscription ID where this Terraform will authenticate (can be different from workload subscription)"
+  description = "The portal dev subscription ID"
   type        = string
+  default     = "9a877ddf-9796-43a8-a557-f6af1df195bf"
 }
 
 variable "tenant_id" {
@@ -8,20 +9,16 @@ variable "tenant_id" {
   type        = string
 }
 
-variable "workload_subscription_id" {
-  description = "The subscription ID to place into the landing zone"
+variable "management_group_name" {
+  description = "Management group name for portals (acme-portals)"
   type        = string
+  default     = "acme-portals"
 }
 
-variable "landing_zone_name" {
-  description = "Name of the landing zone (e.g., 'corp-web-apps', 'corp-data')"
+variable "environment" {
+  description = "Environment name (dev, prod, etc.)"
   type        = string
-}
-
-variable "landing_zone_management_group_name" {
-  description = "Management group name from ALZ foundation (typically 'acme-landingzones-corp')"
-  type        = string
-  default     = "acme-landingzones-corp"
+  default     = "dev"
 }
 
 variable "location" {
@@ -40,11 +37,11 @@ variable "create_virtual_network" {
 variable "vnet_address_space" {
   description = "Address space for the virtual network"
   type        = list(string)
-  default     = ["10.0.0.0/16"]
+  default     = ["10.200.0.0/16"]
 }
 
 variable "vnet_subnets" {
-  description = "Map of subnets to create in the virtual network (AVM v0.16+ format)"
+  description = "Map of subnets to create in the virtual network"
   type = map(object({
     name             = string
     address_prefixes = list(string)
@@ -60,24 +57,33 @@ variable "vnet_subnets" {
     })), [])
   }))
   default = {
-    default = {
-      name             = "subnet-default"
-      address_prefixes = ["10.0.1.0/24"]
-    }
     webapp = {
       name             = "subnet-webapp"
-      address_prefixes = ["10.0.2.0/24"]
+      address_prefixes = ["10.200.1.0/24"]
+      delegations = [{
+        name = "delegation"
+        service_delegation = {
+          name = "Microsoft.Web/serverFarms"
+        }
+      }]
+    }
+    privateendpoints = {
+      name             = "subnet-privateendpoints"
+      address_prefixes = ["10.200.2.0/24"]
+    }
+    data = {
+      name             = "subnet-data"
+      address_prefixes = ["10.200.3.0/24"]
       service_endpoints_with_location = [
-        { service = "Microsoft.Web" },
-        { service = "Microsoft.Storage" },
-        { service = "Microsoft.KeyVault" }
+        { service = "Microsoft.Sql" },
+        { service = "Microsoft.Storage" }
       ]
     }
   }
 }
 
 variable "vnet_dns_servers" {
-  description = "DNS servers configuration for the virtual network (AVM v0.16+ format)"
+  description = "DNS servers configuration for the virtual network"
   type = object({
     dns_servers = list(string)
   })
@@ -98,13 +104,16 @@ variable "log_retention_days" {
 }
 
 variable "tags" {
-  description = "Tags to apply to resources"
+  description = "A map of tags to add to all resources"
   type        = map(string)
   default     = {}
 }
 
 variable "common_tags" {
-  description = "Common tags applied to all resources"
+  description = "Common tags to be applied to all resources"
   type        = map(string)
-  default     = {}
+  default = {
+    DeploymentMethod = "Terraform"
+    Repository       = "emergent-azure-landing-zone"
+  }
 }

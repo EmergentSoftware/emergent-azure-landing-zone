@@ -112,17 +112,16 @@ terraform output management_group_ids
 
 ## Step 2: Place Subscription in Landing Zone
 
-**Directory**: `02-landing-zones/`
+**Directory**: `02-landing-zones/workloads/`
 
-**Purpose**: Associates your subscription with the appropriate landing zone management group and creates shared monitoring resources.
+**Purpose**: Associates your subscription with the workloads landing zone management group and creates shared monitoring resources.
 
 **Prerequisites**:
 - Step 1 completed
-- Know which management group to use (`acme-landingzones-corp` or `acme-landingzones-online`)
 
 **Configuration**:
 ```bash
-cd ../02-landing-zones
+cd ../02-landing-zones/workloads
 cp terraform.tfvars.example terraform.tfvars
 ```
 
@@ -131,8 +130,8 @@ Edit `terraform.tfvars`:
 subscription_id                    = "00000000-0000-0000-0000-000000000000" # Your subscription ID
 tenant_id                          = "00000000-0000-0000-0000-000000000000" # Your tenant ID
 workload_subscription_id           = "00000000-0000-0000-0000-000000000000" # Your subscription ID
-landing_zone_name                  = "corp-web-apps"
-landing_zone_management_group_name = "acme-landingzones-corp"  # ← From Step 1
+landing_zone_name                  = "web-apps"
+landing_zone_management_group_name = "acme-workloads"  # ← From Step 1
 create_log_analytics               = true
 ```
 
@@ -151,7 +150,7 @@ terraform apply
 terraform output -raw log_analytics_workspace_resource_id
 
 # Check subscription placement
-az account management-group show --name acme-landingzones-corp --expand
+az account management-group show --name acme-workloads --expand
 ```
 
 **Save This Value**:
@@ -242,10 +241,10 @@ echo "✓ ALZ Foundation deployed"
 # Step 2: Landing Zone
 echo ""
 echo "Step 2/3: Placing subscription in landing zone..."
-cd ../02-landing-zones
+cd ../02-landing-zones/workloads
 if [ ! -f terraform.tfvars ]; then
   cp terraform.tfvars.example terraform.tfvars
-  echo "⚠ Please edit 02-landing-zones/terraform.tfvars and run this script again"
+  echo "⚠ Please edit 02-landing-zones/workloads/terraform.tfvars and run this script again"
   exit 1
 fi
 terraform init

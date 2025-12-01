@@ -1,0 +1,146 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Azure/Azure-Landing-Zones-Library/main/schemas/policy_definition.json",
+  "name": "Allowed-Resource-Types-Workloads",
+  "properties": {
+    "displayName": "Allowed resource types for workloads",
+    "description": "This policy restricts which resource types can be deployed in workload subscriptions. Only whitelisted Azure services commonly used for application workloads are permitted.",
+    "metadata": {
+      "version": "1.0.0",
+      "category": "General"
+    },
+    "mode": "Indexed",
+    "parameters": {
+      "listOfResourceTypesAllowed": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Allowed resource types",
+          "description": "The list of resource types that can be deployed in workload subscriptions.",
+          "strongType": "resourceTypes"
+        },
+        "defaultValue": [
+          "Microsoft.Resources/resourceGroups",
+          "Microsoft.Resources/subscriptions",
+          "Microsoft.Resources/deployments",
+          "Microsoft.Resources/tags",
+
+          "Microsoft.Web/staticSites",
+          "Microsoft.Web/sites",
+          "Microsoft.Web/serverfarms",
+          "Microsoft.Web/connections",
+
+          "Microsoft.Storage/storageAccounts",
+          "Microsoft.Storage/storageAccounts/blobServices",
+          "Microsoft.Storage/storageAccounts/fileServices",
+          "Microsoft.Storage/storageAccounts/tableServices",
+          "Microsoft.Storage/storageAccounts/queueServices",
+          "Microsoft.Storage/storageAccounts/blobServices/containers",
+
+          "Microsoft.DocumentDB/databaseAccounts",
+
+          "Microsoft.Sql/servers",
+          "Microsoft.Sql/servers/databases",
+          "Microsoft.Sql/servers/elasticPools",
+
+          "Microsoft.Cache/redis",
+          "Microsoft.Cache/redisEnterprise",
+
+          "Microsoft.KeyVault/vaults",
+          "Microsoft.KeyVault/vaults/secrets",
+          "Microsoft.KeyVault/vaults/keys",
+          "Microsoft.KeyVault/vaults/accessPolicies",
+
+          "Microsoft.Insights/components",
+          "Microsoft.Insights/actionGroups",
+          "Microsoft.Insights/alertRules",
+          "Microsoft.Insights/metricAlerts",
+          "Microsoft.Insights/scheduledQueryRules",
+          "Microsoft.Insights/workbooks",
+          "Microsoft.Insights/dataCollectionRules",
+          "Microsoft.Insights/dataCollectionEndpoints",
+          "Microsoft.Insights/diagnosticSettings",
+
+          "Microsoft.OperationalInsights/workspaces",
+
+          "Microsoft.Network/virtualNetworks",
+          "Microsoft.Network/virtualNetworks/subnets",
+          "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+          "Microsoft.Network/privateEndpoints",
+          "Microsoft.Network/privateDnsZones",
+          "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+          "Microsoft.Network/networkInterfaces",
+          "Microsoft.Network/networkSecurityGroups",
+          "Microsoft.Network/networkSecurityGroups/securityRules",
+          "Microsoft.Network/routeTables",
+          "Microsoft.Network/routeTables/routes",
+          "Microsoft.Network/natGateways",
+          "Microsoft.Network/publicIPAddresses",
+          "Microsoft.Network/publicIPPrefixes",
+          "Microsoft.Network/applicationGateways",
+          "Microsoft.Network/loadBalancers",
+          "Microsoft.Network/bastionHosts",
+          "Microsoft.Network/networkWatchers",
+          "Microsoft.Network/networkWatchers/connectionMonitors",
+          "Microsoft.Network/networkWatchers/flowLogs",
+          "Microsoft.Network/azureFirewalls",
+          "Microsoft.Network/firewallPolicies",
+
+          "Microsoft.Compute/virtualMachines",
+          "Microsoft.Compute/virtualMachines/extensions",
+          "Microsoft.Compute/virtualMachineScaleSets",
+          "Microsoft.Compute/virtualMachineScaleSets/extensions",
+          "Microsoft.Compute/disks",
+          "Microsoft.Compute/snapshots",
+          "Microsoft.Compute/images",
+          "Microsoft.Compute/availabilitySets",
+
+          "Microsoft.ContainerRegistry/registries",
+          "Microsoft.ContainerInstance/containerGroups",
+          "Microsoft.ContainerService/managedClusters",
+
+          "Microsoft.ServiceBus/namespaces",
+          "Microsoft.ServiceBus/namespaces/queues",
+          "Microsoft.ServiceBus/namespaces/topics",
+          "Microsoft.EventHub/namespaces",
+          "Microsoft.EventHub/namespaces/eventhubs",
+          "Microsoft.EventGrid/topics",
+          "Microsoft.EventGrid/systemTopics",
+          "Microsoft.EventGrid/eventSubscriptions",
+
+          "Microsoft.CognitiveServices/accounts",
+
+          "Microsoft.ApiManagement/service",
+
+          "Microsoft.Logic/workflows",
+
+          "Microsoft.ManagedIdentity/userAssignedIdentities",
+
+          "Microsoft.Authorization/roleAssignments",
+          "Microsoft.Authorization/locks",
+
+          "Microsoft.Security/assessmentMetadata",
+          "Microsoft.Security/assessments"
+        ]
+      },
+      "effect": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Effect",
+          "description": "Enable or disable the execution of the policy"
+        },
+        "allowedValues": ["Audit", "Deny", "Disabled"],
+        "defaultValue": "Deny"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "not": {
+          "field": "type",
+          "in": "[parameters('listOfResourceTypesAllowed')]"
+        }
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

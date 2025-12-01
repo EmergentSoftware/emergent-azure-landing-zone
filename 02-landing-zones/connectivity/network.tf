@@ -73,7 +73,7 @@ module "hub_vnet" {
 
     # Shared Services
     "${local.hub.subnets[3].name}" = {
-      name = local.hub.subnets[3].name
+      name             = local.hub.subnets[3].name
       address_prefixes = [local.hub.subnets[3].address_prefix]
       service_endpoints_with_location = [
         for endpoint in local.hub.subnets[3].service_endpoints : {
@@ -91,7 +91,7 @@ module "hub_vnet" {
 
     # Management and Monitoring
     "${local.hub.subnets[5].name}" = {
-      name = local.hub.subnets[5].name
+      name             = local.hub.subnets[5].name
       address_prefixes = [local.hub.subnets[5].address_prefix]
       service_endpoints_with_location = [
         for endpoint in local.hub.subnets[5].service_endpoints : {

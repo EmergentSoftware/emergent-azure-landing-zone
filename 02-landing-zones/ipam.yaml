@@ -114,20 +114,20 @@ management:
       service_endpoints: ["Microsoft.Storage"]
       delegations: []
 
-# Portals Landing Zone - Development
-portals-dev:
+# Portals Admin Landing Zone - Development
+portals-admin-dev:
   location: "eastus2"
   location_short: "eus2"
   vnet:
-    name: "vnet-portals-dev-eus2"
+    name: "vnet-portals-admin-dev-eus2"
     address_space: "10.100.0.0/16"
     dns_servers: []
     
   subnets:
-    # Application Subnet - For app workloads
-    - name: "snet-portals-apps-dev-eus2"
+    # Application Subnet - For admin portal app workloads
+    - name: "snet-portals-admin-apps-dev-eus2"
       address_prefix: "10.100.1.0/24"
-      purpose: "Application workloads and compute"
+      purpose: "Admin portal application workloads"
       service_endpoints: 
         - "Microsoft.Web"
         - "Microsoft.Storage"
@@ -136,15 +136,15 @@ portals-dev:
       delegations: []
       
     # Private Endpoints Subnet - For Static Web Apps and other PaaS
-    - name: "snet-portals-privateendpoints-dev-eus2"
+    - name: "snet-portals-admin-privateendpoints-dev-eus2"
       address_prefix: "10.100.2.0/24"
-      purpose: "Private endpoints for Static Web Apps, Storage, etc."
+      purpose: "Private endpoints for admin portal Static Web App, Storage, etc."
       service_endpoints: []
       delegations: []
       private_endpoint_network_policies: "Disabled"
       
     # VNet Integration Subnet - For App Service VNet integration
-    - name: "snet-portals-integration-dev-eus2"
+    - name: "snet-portals-admin-integration-dev-eus2"
       address_prefix: "10.100.3.0/24"
       purpose: "VNet integration for App Services (if needed)"
       service_endpoints: 
@@ -158,9 +158,61 @@ portals-dev:
               - "Microsoft.Network/virtualNetworks/subnets/action"
               
     # Data Services Subnet
-    - name: "snet-portals-data-dev-eus2"
+    - name: "snet-portals-admin-data-dev-eus2"
       address_prefix: "10.100.4.0/24"
-      purpose: "Database services and data platforms"
+      purpose: "Database services and data platforms for admin portal"
+      service_endpoints:
+        - "Microsoft.Sql"
+        - "Microsoft.Storage"
+      delegations: []
+
+# Portals Customer Landing Zone - Development
+portals-customer-dev:
+  location: "eastus2"
+  location_short: "eus2"
+  vnet:
+    name: "vnet-portals-customer-dev-eus2"
+    address_space: "10.110.0.0/16"
+    dns_servers: []
+    
+  subnets:
+    # Application Subnet - For customer portal app workloads
+    - name: "snet-portals-customer-apps-dev-eus2"
+      address_prefix: "10.110.1.0/24"
+      purpose: "Customer portal application workloads"
+      service_endpoints: 
+        - "Microsoft.Web"
+        - "Microsoft.Storage"
+        - "Microsoft.KeyVault"
+        - "Microsoft.Sql"
+      delegations: []
+      
+    # Private Endpoints Subnet - For Static Web Apps and other PaaS
+    - name: "snet-portals-customer-privateendpoints-dev-eus2"
+      address_prefix: "10.110.2.0/24"
+      purpose: "Private endpoints for customer portal Static Web App, Storage, etc."
+      service_endpoints: []
+      delegations: []
+      private_endpoint_network_policies: "Disabled"
+      
+    # VNet Integration Subnet - For App Service VNet integration
+    - name: "snet-portals-customer-integration-dev-eus2"
+      address_prefix: "10.110.3.0/24"
+      purpose: "VNet integration for App Services (if needed)"
+      service_endpoints: 
+        - "Microsoft.Web"
+        - "Microsoft.Storage"
+      delegations:
+        - name: "delegation"
+          service_delegation:
+            name: "Microsoft.Web/serverFarms"
+            actions:
+              - "Microsoft.Network/virtualNetworks/subnets/action"
+              
+    # Data Services Subnet
+    - name: "snet-portals-customer-data-dev-eus2"
+      address_prefix: "10.110.4.0/24"
+      purpose: "Database services and data platforms for customer portal"
       service_endpoints:
         - "Microsoft.Sql"
         - "Microsoft.Storage"

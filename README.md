@@ -31,18 +31,49 @@ This repository demonstrates deploying **Azure Landing Zones** using **Azure Ver
 
 ## 🏗️ Architecture
 
-This deployment creates the following management group hierarchy:
+This deployment creates the following infrastructure:
 
+### Management Group Hierarchy
 ```
 Tenant Root
 └── ACME ALZ Root
     ├── Platform
     │   ├── Management
-    │   ├── Connectivity
+    │   ├── Connectivity (with hub VNet + private DNS)
     │   └── Identity
     ├── Workloads
+    │   └── Portals (admin + customer portals)
     ├── Sandbox
     └── Decommissioned
+```
+
+### Network Architecture (Hub-and-Spoke)
+```
+Connectivity Hub (10.0.0.0/16)
+├── GatewaySubnet (10.0.0.0/27)
+├── AzureFirewallSubnet (10.0.1.0/26)
+├── AzureBastionSubnet (10.0.2.0/26)
+├── Shared Services (10.0.10.0/24)
+├── NVA (10.0.11.0/24)
+└── Management (10.0.12.0/24)
+
+Private DNS Zones (Connectivity Subscription)
+├── privatelink.azurestaticapps.net
+├── privatelink.blob.core.windows.net
+├── privatelink.database.windows.net
+└── ... (see 02-landing-zones/connectivity/README.md)
+
+Portals Admin Dev Spoke (10.100.0.0/16)
+├── Apps (10.100.1.0/24)
+├── Private Endpoints (10.100.2.0/24)
+├── VNet Integration (10.100.3.0/24)
+└── Data (10.100.4.0/24)
+
+Portals Customer Dev Spoke (10.110.0.0/16)
+├── Apps (10.110.1.0/24)
+├── Private Endpoints (10.110.2.0/24)
+├── VNet Integration (10.110.3.0/24)
+└── Data (10.110.4.0/24)
 ```
 
 ## 📦 Azure Verified Module Used
@@ -171,13 +202,62 @@ az account management-group show --name alz -e -r
 ## 📁 Project Structure
 
 ```
-acme-avm-alz-demo/
-├── main.tf                      # Main Terraform configuration with AVM module
-├── variables.tf                 # Input variables
-├── outputs.tf                   # Output values
-├── terraform.tfvars.example     # Example variable values
-├── .gitignore                   # Git ignore file
-└── README.md                    # This file
+emergent-azure-landing-zone/
+├── 00-bootstrap/                     # Terraform state storage (deploy once)
+│   ├── main.tf
+│   ├── outputs.tf
+│   └── README.md
+│
+├── 01-alz-foundation/                # ALZ management groups & policies
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── README.md
+│
+├── 02-landing-zones/                 # Network infrastructure per subscription
+│   ├── connectivity/                 # Hub VNet + Private DNS zones
+│   │   ├── main.tf
+│   │   ├── network.tf               # Hub VNet (10.0.0.0/16)
+│   │   ├── private-dns.tf           # Centralized private DNS
+│   │   ├── outputs.tf
+│   │   └── README.md
+│   │
+│   ├── workloads/
+│   │   ├── portals-admin-dev/       # Admin portal spoke (10.100.0.0/16)
+│   │   │   ├── main.tf
+│   │   │   ├── network.tf
+│   │   │   └── README.md
+│   │   │
+│   │   └── portals-customer-dev/    # Customer portal spoke (10.110.0.0/16)
+│   │       ├── main.tf
+│   │       ├── network.tf
+│   │       └── README.md
+│   │
+│   ├── ipam.yaml                    # IP address management manifest
+│   └── README.md
+│
+├── 03-workloads/                     # Application deployments
+│   └── portals/
+│       ├── admin-portal/            # Admin Static Web App
+│       │   ├── main.tf
+│       │   ├── dev.tfvars
+│       │   └── prod.tfvars
+│       │
+│       └── customer-portal/         # Customer Static Web App
+│           ├── main.tf
+│           ├── dev.tfvars
+│           └── prod.tfvars
+│
+├── shared-modules/                   # Reusable module wrappers
+│   ├── virtual-network/             # AVM VNet wrapper
+│   ├── resource-group/              # AVM RG wrapper
+│   ├── static-web-app/              # Custom Static Web App module
+│   ├── log-analytics-workspace/
+│   └── naming/                      # Azure naming convention
+│
+├── DEPLOYMENT-ORDER.md              # Step-by-step deployment guide
+├── QUICKSTART.md                    # Quick start guide
+└── README.md                        # This file
 ```
 
 ## 🎯 Key Features Demonstrated

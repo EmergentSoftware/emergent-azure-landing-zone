@@ -38,3 +38,32 @@ output "network_resource_group_id" {
   description = "The ID of the network resource group"
   value       = module.network_resource_group.resource_id
 }
+
+# Private DNS Zone outputs
+output "private_dns_resource_group_name" {
+  description = "The name of the private DNS zones resource group"
+  value       = module.private_dns_resource_group.name
+}
+
+output "private_dns_resource_group_id" {
+  description = "The ID of the private DNS zones resource group"
+  value       = module.private_dns_resource_group.resource_id
+}
+
+output "private_dns_zones" {
+  description = "Map of private DNS zone IDs"
+  value = {
+    static_web_apps    = azurerm_private_dns_zone.static_web_apps.id
+    storage_blob       = azurerm_private_dns_zone.storage_blob.id
+    storage_file       = azurerm_private_dns_zone.storage_file.id
+    storage_table      = azurerm_private_dns_zone.storage_table.id
+    storage_queue      = azurerm_private_dns_zone.storage_queue.id
+    sql_database       = azurerm_private_dns_zone.sql_database.id
+    cosmos_sql         = azurerm_private_dns_zone.cosmos_sql.id
+    key_vault          = azurerm_private_dns_zone.key_vault.id
+    app_service        = azurerm_private_dns_zone.app_service.id
+    container_registry = azurerm_private_dns_zone.container_registry.id
+    service_bus        = azurerm_private_dns_zone.service_bus.id
+  }
+}
+

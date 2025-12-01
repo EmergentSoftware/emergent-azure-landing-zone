@@ -38,3 +38,28 @@ resource "azurerm_management_group_subscription_association" "connectivity" {
   management_group_id = data.azurerm_management_group.connectivity.id
   subscription_id     = "/subscriptions/${var.subscription_id}"
 }
+
+# =============================================================================
+# Naming Module for Consistent Azure Resource Naming
+# =============================================================================
+
+module "naming" {
+  source   = "../../shared-modules/naming"
+  location = var.location
+  suffix   = ["connectivity", "prod"]
+}
+
+# Prepare common tags for all resources
+locals {
+  common_tags = merge(
+    var.tags,
+    {
+      Purpose         = "Landing Zone - Connectivity"
+      LandingZone     = "connectivity"
+      Environment     = "production"
+      ManagementGroup = var.management_group_name
+      ManagedBy       = "Terraform"
+      DeployedBy      = "AVM"
+    }
+  )
+}

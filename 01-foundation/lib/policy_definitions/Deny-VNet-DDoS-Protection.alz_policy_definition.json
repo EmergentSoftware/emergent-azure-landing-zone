@@ -1,0 +1,40 @@
+{
+  "name": "Deny-VNet-DDoS-Protection",
+  "properties": {
+    "displayName": "Virtual networks should not have DDoS protection enabled",
+    "description": "Denies the creation of virtual networks with DDoS protection enabled in workload subscriptions. DDoS protection should be managed centrally at the hub level.",
+    "mode": "Indexed",
+    "metadata": {
+      "version": "1.0.0",
+      "category": "Network"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Effect",
+          "description": "Enable or disable the execution of the policy"
+        },
+        "allowedValues": ["Audit", "Deny", "Disabled"],
+        "defaultValue": "Deny"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.Network/virtualNetworks"
+          },
+          {
+            "field": "Microsoft.Network/virtualNetworks/enableDdosProtection",
+            "equals": "true"
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

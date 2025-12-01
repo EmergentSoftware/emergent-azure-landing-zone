@@ -10,7 +10,7 @@
       "parent_id": null
     },
     {
-      "archetypes": ["landing_zones", "corp"],
+      "archetypes": ["workloads_restricted", "landing_zones"],
       "display_name": "ACME Workloads",
       "exists": false,
       "id": "acme-workloads",

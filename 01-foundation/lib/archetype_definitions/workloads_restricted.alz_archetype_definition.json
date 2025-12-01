@@ -1,0 +1,13 @@
+{
+  "name": "workloads_restricted",
+  "base_archetype": "landing_zones",
+  "policy_assignments": [
+    "Allowed-Resources-WL",
+    "Deny-VNet-DDoS",
+    "Audit-PeDnsZones",
+    "Deny-HybridNetworking",
+    "Deny-Public-Endpoints",
+    "Deny-Public-IP-On-NIC",
+    "Deploy-Private-DNS-Zones"
+  ]
+}

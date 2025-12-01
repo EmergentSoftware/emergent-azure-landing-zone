@@ -1,5 +1,5 @@
 {
   "name": "workloads_restricted",
   "base_archetype": "landing_zones",
-  "policy_assignments": ["Allowed-Resource-Types-Workloads"]
+  "policy_assignments": ["Allowed-Resources-WL"]
 }

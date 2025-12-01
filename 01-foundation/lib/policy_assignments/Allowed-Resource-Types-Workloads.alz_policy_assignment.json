@@ -1,5 +1,5 @@
 {
-  "name": "Allowed-Resource-Types-Workloads",
+  "name": "Allowed-Resources-WL",
   "properties": {
     "displayName": "Allowed resource types for workloads",
     "description": "Restricts which resource types can be deployed in workload subscriptions to maintain security and compliance.",
@@ -13,6 +13,6 @@
         "value": "Deny"
       }
     },
-    "policyDefinitionName": "Allowed-Resource-Types-Workloads"
+    "policyDefinitionId": "/providers/Microsoft.Management/managementGroups/placeholder/providers/Microsoft.Authorization/policyDefinitions/Allowed-Resource-Types-Workloads"
   }
 }

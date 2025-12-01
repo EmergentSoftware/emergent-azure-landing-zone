@@ -70,7 +70,7 @@ module "networking_resource_group" {
   count  = var.create_virtual_network ? 1 : 0
   source = "../../shared-modules/resource-group"
 
-  name     = "${module.naming.resource_group.name}-mgmt-net"
+  name     = "${module.naming.resource_group.name}-net"
   location = var.location
   tags     = local.common_tags
 }

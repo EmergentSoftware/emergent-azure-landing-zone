@@ -99,17 +99,22 @@ Platform landing zones only create the subscription association:
   - Enables governance and compliance
 
 ### Workload Landing Zones
-Workload landing zones (like portals-dev) create:
+Workload landing zones (like portals-dev) create networking and monitoring infrastructure:
 
+#### Networking Resources
+- **Resource Group**: `acme-rg-{landing-zone}-{environment}-{region}-net`
+- **Virtual Network**: `acme-vnet-{landing-zone}-{environment}-{region}-{unique}`
+  - Hub connectivity for workload isolation
+  - Subnets for web apps, private endpoints, and data services
+  - Service endpoints and delegations as needed
 
-
-### Monitoring Resources
-- **Resource Group**: `rg-{environment}-monitoring-{location}`
-- **Log Analytics Workspace**: `log-{environment}-{location}`
+#### Monitoring Resources
+- **Resource Group**: `acme-rg-{landing-zone}-{environment}-{region}-mon`
+- **Log Analytics Workspace**: `acme-log-{landing-zone}-{environment}-{region}-{unique}`
   - Configurable retention period (default 30 days)
   - Shared by all workloads in this environment
 
-### Subscription Association
+#### Subscription Association
 - Links subscription to management group
 - Inherits policies from ALZ foundation
 
@@ -121,10 +126,11 @@ terraform init -backend-config=../../../00-bootstrap/backend-config-portal-dev.t
 terraform apply
 ```
 
-Get the Log Analytics workspace ID for use in workload deployments:
-```bash
-terraform output -raw log_analytics_workspace_resource_id
-```
+This creates:
+- `acme-rg-portals-dev-eus-net` - Networking resource group
+- `acme-rg-portals-dev-eus-mon` - Monitoring resource group
+- `acme-vnet-portals-dev-eus-{unique}` - Virtual network (10.200.0.0/16)
+- `acme-log-portals-dev-eus-{unique}` - Log Analytics workspace
 
 ## Deployment Order
 
@@ -170,76 +176,71 @@ az account management-group show --name acme-portals
 - All subscription IDs are set as defaults in `variables.tf` files
 - Only `tenant_id` needs to be provided in `terraform.tfvars`
 
-### Optional Monitoring Resources
-If `create_log_analytics = true`:
-- **Resource Group**: `rg-{landing_zone_name}-monitoring-{location}`
-- **Log Analytics Workspace**: `log-{landing_zone_name}-{location}`
+## Creating Additional Landing Zones
 
-These can be shared by all workloads in this landing zone.
+To create a new workload landing zone:
 
-## Example Scenarios
+1. **Copy an existing landing zone** as a template:
+   ```bash
+   cp -r workloads/portals-dev workloads/my-new-app
+   ```
 
-### Scenario 1: Web Application
+2. **Update the configuration** in `terraform.tfvars`:
+   ```hcl
+   landing_zone_name = "my-new-app"
+   environment       = "dev"  # or "prod"
+   subscription_id   = "your-subscription-id"
+   ```
 
-```hcl
-landing_zone_name                  = "web-apps"
-landing_zone_management_group_name = "acme-workloads"
-workload_subscription_id           = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-```
+3. **Update naming suffix** in `main.tf`:
+   ```hcl
+   module "naming" {
+     source   = "../../../shared-modules/naming"
+     location = var.location
+     suffix   = ["myapp", var.environment]  # Change "myapp" to your identifier
+   }
+   ```
 
-### Scenario 2: API Platform
-
-```hcl
-landing_zone_name                  = "public-apis"
-landing_zone_management_group_name = "acme-workloads"
-workload_subscription_id           = "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
-```
-
-## Multiple Landing Zones
-
-To create multiple landing zones, either:
-
-**Option A: Use Workspaces**
-```bash
-terraform workspace new prod-corp
-terraform workspace new prod-online
-terraform workspace select prod-corp
-terraform apply
-```
-
-**Option B: Separate Directories**
-```
-landing-zones/
-├── corp-web-apps/
-│   ├── main.tf -> ../main.tf (symlink)
-│   └── terraform.tfvars
-└── online-apis/
-    ├── main.tf -> ../main.tf (symlink)
-    └── terraform.tfvars
-```
+4. **Deploy**:
+   ```bash
+   cd workloads/my-new-app
+   terraform init -backend-config=../../../00-bootstrap/backend-config-my-new-app.txt
+   terraform apply
+   ```
 
 ## Outputs
 
-Use these outputs in your workload deployments:
+Each landing zone provides outputs for connecting workloads:
 
 ```bash
-# Get the Log Analytics workspace ID for workload diagnostics
-terraform output -raw log_analytics_workspace_resource_id
+# Networking outputs
+terraform output networking_resource_group_name
+terraform output virtual_network_name
+terraform output virtual_network_id
+terraform output subnets
 
-# Verify subscription placement
-terraform output management_group_id
+# Monitoring outputs
+terraform output monitoring_resource_group_name
+terraform output log_analytics_workspace_id
+terraform output log_analytics_workspace_name
 ```
 
-## Connect to Workloads
+## Using Landing Zone Resources in Workloads
 
-In your workload's `terraform.tfvars`:
+Reference the landing zone's networking and monitoring resources in your workload deployments:
 
 ```hcl
-# From landing-zones output
-log_analytics_workspace_id = "/subscriptions/.../resourceGroups/rg-corp-web-apps-monitoring-eastus/providers/Microsoft.OperationalInsights/workspaces/log-corp-web-apps-eastus"
+# Get the VNet for peering or subnet references
+data "azurerm_virtual_network" "landing_zone" {
+  name                = "acme-vnet-portals-dev-eus-xxxx"
+  resource_group_name = "acme-rg-portals-dev-eus-net"
+}
 
-# Ensure subscription_id matches
-subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# Get the Log Analytics workspace for diagnostics
+data "azurerm_log_analytics_workspace" "landing_zone" {
+  name                = "acme-log-portals-dev-eus-xxxx"
+  resource_group_name = "acme-rg-portals-dev-eus-mon"
+}
 ```
 
 ## Policy Compliance
@@ -249,56 +250,77 @@ After placing a subscription into a landing zone:
 - Some policies may require specific configurations (e.g., allowed locations)
 - Review policy assignments in the Azure Portal
 
+## Naming Convention
+
+All resources follow a consistent naming pattern:
+
+```
+Pattern: acme-{resource-type}-{landing-zone}-{environment}-{region-abbr}-{role}
+
+Examples:
+- acme-rg-mgmt-prod-eus-net         (Management networking RG)
+- acme-rg-portals-dev-eus-mon       (Portals monitoring RG)
+- acme-vnet-mgmt-prod-eus-jdqy      (Management VNet with unique suffix)
+- acme-log-portals-dev-eus-zwtx     (Portals Log Analytics)
+```
+
+**Components:**
+- `acme` - Organization prefix
+- `{resource-type}` - Azure resource type (rg, vnet, log, etc.)
+- `{landing-zone}` - Landing zone identifier (mgmt, portals, etc.)
+- `{environment}` - Environment (prod, dev, test)
+- `{region-abbr}` - Abbreviated region (eus = East US)
+- `{role}` - Resource purpose (net = networking, mon = monitoring)
+- `{unique}` - Auto-generated 4-character suffix for globally unique names
+
 ## Troubleshooting
 
 ### Subscription Not Moving
-
-If the subscription doesn't appear under the management group:
-1. Verify you have Owner or User Access Administrator role on the subscription
-2. Check Azure Portal → Management Groups → Find your subscription
-3. Wait a few minutes for Azure Resource Manager to propagate changes
+1. Verify Owner or User Access Administrator role on the subscription
+2. Check Azure Portal → Management Groups
+3. Wait a few minutes for propagation
 
 ### Policy Conflicts
-
-If workload deployment fails due to policies:
 1. Check Azure Portal → Policy → Compliance
-2. Review denied operations in Activity Log
-3. Either fix the workload to comply, or modify policy assignments in alz-foundation
+2. Review Activity Log for denied operations
+3. Update workload to comply or adjust policies in foundation
 
-### Log Analytics Access
-
-If workloads can't write to Log Analytics:
-1. Verify the workspace exists: `terraform output log_analytics_workspace_id`
-2. Ensure workload's managed identity has Contributor role on workspace
-3. Check firewall rules if workspace has network restrictions
+### State Lock Issues
+If terraform operations fail due to state locks:
+```bash
+terraform force-unlock <lock-id>
+```
 
 ## Best Practices
 
-1. **One Landing Zone per Subscription Type**: Separate corp vs online workloads
-2. **Shared Monitoring**: Use the landing zone's Log Analytics for all workloads
-3. **Consistent Naming**: Use `{org}-landingzones-{type}` pattern
-4. **Tag Everything**: Apply consistent tags for cost tracking
-5. **Document Dependencies**: Note which workloads depend on this landing zone
+1. **Separate Landing Zones**: One per workload type or application family
+2. **Shared Infrastructure**: Use landing zone VNet and Log Analytics for all related workloads
+3. **Consistent Naming**: Follow the established naming convention
+4. **Resource Tagging**: Apply consistent tags for cost tracking and governance
+5. **Network Planning**: Ensure VNet address spaces don't overlap between landing zones
 
 ## Clean Up
 
-To remove a landing zone (WARNING: This affects all workloads):
+To remove a landing zone (⚠️ WARNING: Destroy workloads first):
 
 ```bash
-# 1. Destroy all workloads first
-cd ../workloads/web-app
+# 1. Destroy all workloads using this landing zone
+cd ../../03-workloads/portals
 terraform destroy
 
-# 2. Then destroy the landing zone
-cd ../../landing-zones
+# 2. Then destroy the landing zone infrastructure
+cd ../../02-landing-zones/workloads/portals-dev
 terraform destroy
 ```
 
 This will:
+- Delete virtual network and subnets
+- Delete Log Analytics workspace (❌ logs will be lost)
+- Delete resource groups
 - Remove subscription from management group
-- Delete Log Analytics workspace and monitoring resources## Notes
 
-- Platform subscriptions (connectivity, identity, management) only create subscription associations
-- Workload subscriptions (portals-dev) also create Log Analytics workspace for monitoring
-- All subscription IDs are set as defaults in `variables.tf` files
-- Only `tenant_id` needs to be provided in `terraform.tfvars`
+## Additional Resources
+
+- [Azure Landing Zones Documentation](https://learn.microsoft.com/azure/cloud-adoption-framework/ready/landing-zone/)
+- [Azure Verified Modules](https://azure.github.io/Azure-Verified-Modules/)
+- [Cloud Adoption Framework](https://learn.microsoft.com/azure/cloud-adoption-framework/)

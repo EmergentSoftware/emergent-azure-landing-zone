@@ -1,5 +1,5 @@
 # =============================================================================
-# Outputs for Web App Workload
+# Outputs for Static Web App Workload
 # =============================================================================
 
 output "resource_group_id" {
@@ -12,42 +12,37 @@ output "resource_group_name" {
   value       = module.resource_group.name
 }
 
-output "app_service_plan_id" {
-  description = "The ID of the App Service Plan"
-  value       = module.app_service_plan.resource_id
+output "static_web_app_id" {
+  description = "The ID of the Static Web App"
+  value       = module.static_web_app.id
 }
 
-output "app_service_plan_name" {
-  description = "The name of the App Service Plan"
-  value       = module.app_service_plan.name
+output "static_web_app_name" {
+  description = "The name of the Static Web App"
+  value       = module.static_web_app.name
 }
 
-output "web_app_id" {
-  description = "The ID of the web app"
-  value       = module.web_app.resource_id
+output "static_web_app_default_hostname" {
+  description = "The default hostname of the Static Web App"
+  value       = module.static_web_app.default_hostname
 }
 
-output "web_app_name" {
-  description = "The name of the web app"
-  value       = module.web_app.name
+output "static_web_app_url" {
+  description = "The HTTPS URL of the Static Web App"
+  value       = "https://${module.static_web_app.default_hostname}"
 }
 
-output "web_app_default_hostname" {
-  description = "The default hostname of the web app"
-  value       = module.web_app.default_hostname
-}
-
-output "web_app_url" {
-  description = "The HTTPS URL of the web app"
-  value       = "https://${module.web_app.default_hostname}"
-}
-
-output "web_app_identity" {
-  description = "The managed identity of the web app"
-  value       = module.web_app.system_assigned_mi_principal_id
+output "static_web_app_api_key" {
+  description = "The API key for the Static Web App"
+  value       = module.static_web_app.api_key
   sensitive   = true
 }
 
+output "static_web_app_identity" {
+  description = "The managed identity of the Static Web App"
+  value       = var.enable_managed_identity ? module.static_web_app.identity : null
+  sensitive   = true
+}
 output "application_insights_id" {
   description = "The ID of Application Insights (if enabled)"
   value       = var.enable_application_insights ? module.application_insights[0].resource_id : null

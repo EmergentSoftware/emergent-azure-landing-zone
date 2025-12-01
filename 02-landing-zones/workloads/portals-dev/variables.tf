@@ -75,8 +75,8 @@ variable "vnet_subnets" {
       name             = "subnet-data"
       address_prefixes = ["10.200.3.0/24"]
       service_endpoints_with_location = [
-        { service = "Microsoft.Sql" },
-        { service = "Microsoft.Storage" }
+        { service = "Microsoft.Sql", locations = ["eastus"] },
+        { service = "Microsoft.Storage", locations = ["eastus"] }
       ]
     }
   }

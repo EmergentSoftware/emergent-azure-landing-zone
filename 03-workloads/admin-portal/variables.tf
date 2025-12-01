@@ -5,6 +5,13 @@
 variable "subscription_id" {
   description = "The Azure subscription ID where resources will be deployed"
   type        = string
+  default     = "9a877ddf-9796-43a8-a557-f6af1df195bf" # portals-dev subscription
+}
+
+variable "landing_zone" {
+  description = "Landing zone name (used in resource naming)"
+  type        = string
+  default     = "portals"
 }
 
 variable "workload_name" {
@@ -13,8 +20,8 @@ variable "workload_name" {
   default     = "demo"
 
   validation {
-    condition     = can(regex("^[a-z0-9]{2,10}$", var.workload_name))
-    error_message = "Workload name must be 2-10 lowercase alphanumeric characters."
+    condition     = can(regex("^[a-z0-9-]{2,20}$", var.workload_name))
+    error_message = "Workload name must be 2-20 lowercase alphanumeric characters or hyphens."
   }
 }
 
@@ -32,59 +39,35 @@ variable "environment" {
 variable "location" {
   description = "Azure region for resource deployment"
   type        = string
-  default     = "eastus"
+  default     = "eastus2" # Static Web Apps common regions
 }
 
-variable "app_service_os_type" {
-  description = "Operating system type for App Service (Linux or Windows)"
+variable "static_web_app_sku_tier" {
+  description = "SKU tier for Static Web App (Free or Standard). Standard required for private endpoints."
   type        = string
-  default     = "Linux"
+  default     = "Standard"
 
   validation {
-    condition     = contains(["Linux", "Windows"], var.app_service_os_type)
-    error_message = "OS type must be Linux or Windows."
+    condition     = contains(["Free", "Standard"], var.static_web_app_sku_tier)
+    error_message = "SKU tier must be either Free or Standard."
   }
 }
 
-variable "app_service_sku_name" {
-  description = "SKU name for App Service Plan (e.g., B1, S1, P1v2)"
+variable "static_web_app_sku_size" {
+  description = "SKU size for Static Web App (Free or Standard). Standard required for private endpoints."
   type        = string
-  default     = "B1"
+  default     = "Standard"
 
   validation {
-    condition     = can(regex("^(B[1-3]|S[1-3]|P[1-3]v[2-3]|F1|D1)$", var.app_service_sku_name))
-    error_message = "Invalid SKU name. Examples: B1, S1, P1v2."
+    condition     = contains(["Free", "Standard"], var.static_web_app_sku_size)
+    error_message = "SKU size must be either Free or Standard."
   }
 }
 
 variable "enable_managed_identity" {
-  description = "Enable system-assigned managed identity for the web app"
+  description = "Enable system-assigned managed identity for the Static Web App"
   type        = bool
   default     = true
-}
-
-variable "enable_cors" {
-  description = "Enable CORS configuration"
-  type        = bool
-  default     = false
-}
-
-variable "cors_allowed_origins" {
-  description = "List of allowed origins for CORS"
-  type        = list(string)
-  default     = []
-}
-
-variable "health_check_path" {
-  description = "Path for health check endpoint (leave empty to disable)"
-  type        = string
-  default     = ""
-}
-
-variable "app_settings" {
-  description = "Additional application settings for the web app"
-  type        = map(string)
-  default     = {}
 }
 
 variable "enable_application_insights" {
@@ -112,3 +95,4 @@ variable "common_tags" {
   type        = map(string)
   default     = {}
 }
+

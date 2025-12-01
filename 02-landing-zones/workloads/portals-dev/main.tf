@@ -70,7 +70,7 @@ module "networking_resource_group" {
   count  = var.create_virtual_network ? 1 : 0
   source = "../../../shared-modules/resource-group"
 
-  name     = "${module.naming.resource_group.name}-portal-net"
+  name     = "${module.naming.resource_group.name}-net"
   location = var.location
   tags     = local.common_tags
 }
@@ -100,7 +100,7 @@ module "monitoring_resource_group" {
   count  = var.create_log_analytics ? 1 : 0
   source = "../../../shared-modules/resource-group"
 
-  name     = "${module.naming.resource_group.name}-portal-mon"
+  name     = "${module.naming.resource_group.name}-mon"
   location = var.location
   tags     = local.common_tags
 }

@@ -10,7 +10,7 @@ output "resource_id" {
 
 output "default_hostname" {
   description = "The default hostname of the web app"
-  value       = module.web_app.resource.default_host_name
+  value       = module.web_app.resource.default_hostname
 }
 
 output "system_assigned_mi_principal_id" {

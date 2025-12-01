@@ -10,10 +10,11 @@
 > **⚠️ IMPORTANT: Deployment Order**
 > See [DEPLOYMENT-ORDER.md](./DEPLOYMENT-ORDER.md) for the complete deployment guide.
 >
-> 0. **00-bootstrap/** - Create Terraform state storage (run once)
-> 1. **01-foundation/** - Deploy management groups & policies first
-> 2. **02-landing-zones/** - Place subscription in landing zone second
-> 3. **03-workloads/** - Deploy application resources third
+> 0. **00-pre-bootstrap/** - Create Azure subscriptions (run once, if needed)
+> 1. **00-bootstrap/** - Create Terraform state storage (run once)
+> 2. **01-foundation/** - Deploy management groups & policies first
+> 3. **02-landing-zones/** - Place subscription in landing zone second
+> 4. **03-workloads/** - Deploy application resources third
 
 ## 📖 About This Repository
 
@@ -23,27 +24,56 @@ This repository demonstrates deploying **Azure Landing Zones** using **Azure Ver
 - ✅ Production-ready Azure Landing Zone implementation
 - ✅ Uses official Azure Verified Modules (AVM)
 - ✅ Wrapper module pattern for version control and customization
-- ✅ Separate corporate and online landing zones
+- ✅ Simplified workloads landing zone
 - ✅ Complete networking and monitoring infrastructure
 - ✅ Example workload deployments
 - ✅ Comprehensive documentation
 
 ## 🏗️ Architecture
 
-This deployment creates the following management group hierarchy:
+This deployment creates the following infrastructure:
 
+### Management Group Hierarchy
 ```
 Tenant Root
-└── ALZ Root
+└── ACME ALZ Root
     ├── Platform
     │   ├── Management
-    │   ├── Connectivity
+    │   ├── Connectivity (with hub VNet + private DNS)
     │   └── Identity
-    ├── Landing Zones
-    │   ├── Corp
-    │   └── Online
+    ├── Workloads
+    │   └── Portals (admin + customer portals)
     ├── Sandbox
     └── Decommissioned
+```
+
+### Network Architecture (Hub-and-Spoke)
+```
+Connectivity Hub (10.0.0.0/16)
+├── GatewaySubnet (10.0.0.0/27)
+├── AzureFirewallSubnet (10.0.1.0/26)
+├── AzureBastionSubnet (10.0.2.0/26)
+├── Shared Services (10.0.10.0/24)
+├── NVA (10.0.11.0/24)
+└── Management (10.0.12.0/24)
+
+Private DNS Zones (Connectivity Subscription)
+├── privatelink.azurestaticapps.net
+├── privatelink.blob.core.windows.net
+├── privatelink.database.windows.net
+└── ... (see 02-landing-zones/connectivity/README.md)
+
+Portals Admin Dev Spoke (10.100.0.0/16)
+├── Apps (10.100.1.0/24)
+├── Private Endpoints (10.100.2.0/24)
+├── VNet Integration (10.100.3.0/24)
+└── Data (10.100.4.0/24)
+
+Portals Customer Dev Spoke (10.110.0.0/16)
+├── Apps (10.110.1.0/24)
+├── Private Endpoints (10.110.2.0/24)
+├── VNet Integration (10.110.3.0/24)
+└── Data (10.110.4.0/24)
 ```
 
 ## 📦 Azure Verified Module Used
@@ -101,112 +131,200 @@ Before you begin, ensure you have:
 ### 1. Clone or Download This Repository
 
 ```powershell
-git clone https://github.com/yourorg/acme-avm-alz-demo.git
-cd acme-avm-alz-demo
+git clone https://github.com/yourorg/emergent-azure-landing-zone.git
+cd emergent-azure-landing-zone
 ```
 
-### 2. Configure Variables
-
-Copy the example variables file and customize it:
+### 2. Bootstrap - Terraform State Storage (One-Time)
 
 ```powershell
-Copy-Item terraform.tfvars.example terraform.tfvars
-```
-
-Edit `terraform.tfvars` with your values:
-
-```hcl
-default_location = "eastus"
-security_contact_email = "security@acme.com"
-allowed_locations = [
-  "eastus",
-  "eastus2",
-  "centralus",
-  "westus2"
-]
-```
-
-### 3. Initialize Terraform
-
-```powershell
+cd 00-bootstrap
 terraform init
+terraform apply -auto-approve
+cd ..
 ```
 
-This will:
-- Download the AVM module
-- Download the ALZ provider
-- Initialize the backend
+This creates the Azure Storage account for remote Terraform state.
 
-### 4. Review the Plan
+### 3. Foundation - Management Groups & Policies
 
 ```powershell
-terraform plan -out=tfplan
+cd 01-alz-foundation
+terraform init
+terraform apply -auto-approve
+cd ..
 ```
 
-Review the planned changes. This will create:
-- Management groups (Platform, Landing Zones, etc.)
-- Policy definitions
-- Policy assignments
-- Policy role assignments
+This deploys the Azure Landing Zone management group hierarchy and governance policies.
 
-### 5. Apply the Configuration
+### 4. Landing Zones - Network Infrastructure
 
 ```powershell
-terraform apply tfplan
+# Deploy hub VNet with private DNS zones
+cd 02-landing-zones/connectivity
+terraform init -backend-config="key=tfstate-connectivity"
+terraform apply -var-file="terraform.tfvars" -auto-approve
+
+# Deploy portal spoke VNets in parallel
+cd ../workloads/portals-admin-dev
+terraform init -backend-config="key=tfstate-portals-admin-dev"
+Start-Job { Set-Location $using:PWD; terraform apply -var-file="terraform.tfvars" -auto-approve }
+
+cd ../portals-customer-dev
+terraform init -backend-config="key=tfstate-portals-customer-dev"
+Start-Job { Set-Location $using:PWD; terraform apply -var-file="terraform.tfvars" -auto-approve }
+
+# Wait for parallel jobs
+Get-Job | Wait-Job
+Get-Job | Receive-Job
+cd ../../..
 ```
 
-⏱️ **Deployment Time**: 10-15 minutes
+### 5. Workloads - Application Deployments
+
+```powershell
+# Deploy admin portal Static Web App
+cd 03-workloads/portals/admin-portal
+terraform init -backend-config="key=tfstate-admin-portal-dev"
+terraform apply -var-file="dev.tfvars" -auto-approve
+
+# Deploy customer portal Static Web App
+cd ../customer-portal
+terraform init -backend-config="key=tfstate-customer-portal-dev"
+terraform apply -var-file="dev.tfvars" -auto-approve
+cd ../../..
+```
 
 ### 6. Verify Deployment
 
-Check the management groups in Azure Portal:
-
 ```powershell
-# List management groups
+# Check management groups
 az account management-group list --output table
 
-# View specific management group
-az account management-group show --name alz -e -r
+# Check network infrastructure
+az network vnet list --query "[].{Name:name, ResourceGroup:resourceGroup, AddressSpace:addressSpace.addressPrefixes[0]}" -o table
+
+# Check private DNS zones
+az network private-dns zone list --resource-group $(az group list --query "[?contains(name, 'privatedns')].name" -o tsv) -o table
+
+# Check Static Web Apps
+az staticwebapp list --query "[].{Name:name, ResourceGroup:resourceGroup, DefaultHostname:defaultHostname}" -o table
 ```
+
+> **Note**: See [DEPLOYMENT-ORDER.md](DEPLOYMENT-ORDER.md) for detailed step-by-step deployment instructions including VNet peering configuration.
 
 ## 📁 Project Structure
 
 ```
-acme-avm-alz-demo/
-├── main.tf                      # Main Terraform configuration with AVM module
-├── variables.tf                 # Input variables
-├── outputs.tf                   # Output values
-├── terraform.tfvars.example     # Example variable values
-├── .gitignore                   # Git ignore file
-└── README.md                    # This file
+emergent-azure-landing-zone/
+├── 00-bootstrap/                     # Terraform state storage (deploy once)
+│   ├── main.tf
+│   ├── outputs.tf
+│   └── README.md
+│
+├── 01-alz-foundation/                # ALZ management groups & policies
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── README.md
+│
+├── 02-landing-zones/                 # Network infrastructure per subscription
+│   ├── connectivity/                 # Hub VNet + Private DNS zones
+│   │   ├── main.tf
+│   │   ├── network.tf               # Hub VNet (10.0.0.0/16)
+│   │   ├── private-dns.tf           # Centralized private DNS
+│   │   ├── outputs.tf
+│   │   └── README.md
+│   │
+│   ├── workloads/
+│   │   ├── portals-admin-dev/       # Admin portal spoke (10.100.0.0/16)
+│   │   │   ├── main.tf
+│   │   │   ├── network.tf
+│   │   │   └── README.md
+│   │   │
+│   │   └── portals-customer-dev/    # Customer portal spoke (10.110.0.0/16)
+│   │       ├── main.tf
+│   │       ├── network.tf
+│   │       └── README.md
+│   │
+│   ├── ipam.yaml                    # IP address management manifest
+│   └── README.md
+│
+├── 03-workloads/                     # Application deployments
+│   └── portals/
+│       ├── admin-portal/            # Admin Static Web App
+│       │   ├── main.tf
+│       │   ├── dev.tfvars
+│       │   └── prod.tfvars
+│       │
+│       └── customer-portal/         # Customer Static Web App
+│           ├── main.tf
+│           ├── dev.tfvars
+│           └── prod.tfvars
+│
+├── shared-modules/                   # Reusable module wrappers
+│   ├── virtual-network/             # AVM VNet wrapper
+│   ├── resource-group/              # AVM RG wrapper
+│   ├── static-web-app/              # Custom Static Web App module
+│   ├── log-analytics-workspace/
+│   └── naming/                      # Azure naming convention
+│
+├── DEPLOYMENT-ORDER.md              # Step-by-step deployment guide
+├── QUICKSTART.md                    # Quick start guide
+└── README.md                        # This file
 ```
 
 ## 🎯 Key Features Demonstrated
 
 ### 1. Management Group Hierarchy
 
-The module automatically creates a CAF-aligned hierarchy:
+Azure Landing Zone management groups aligned with Cloud Adoption Framework:
 
-- **Platform**: For shared platform services
-  - Management: Centralized logging and monitoring
-  - Connectivity: Hub networking and connectivity
-  - Identity: Identity and access management
-- **Landing Zones**: For application workloads
-  - Corp: Corporate/on-premises connected workloads
-  - Online: Internet-facing workloads
-- **Sandbox**: For experimentation and testing
-- **Decommissioned**: For resources being retired
+- **Platform**: Shared platform services
+  - Connectivity: Hub networking, private DNS zones, network security
+  - Management: Centralized logging and monitoring (planned)
+  - Identity: Identity and access management (planned)
+- **Workloads**: For all application workloads
+- **Sandbox**: Experimentation and testing (planned)
+- **Decommissioned**: Resources being retired (planned)
 
-### 2. Policy Governance
+### 2. Network Architecture
 
-Baseline policies are automatically deployed:
+Hub-and-spoke topology with centralized private DNS:
+
+- **Hub VNet (10.0.0.0/16)**: Centralized connectivity with Gateway, Firewall, Bastion
+- **Private DNS Zones**: 11 zones for Azure Private Link services (Static Web Apps, Storage, SQL, Cosmos DB, Key Vault, etc.)
+- **Spoke VNets**: Isolated networks per workload subscription
+  - Admin Portal Dev (10.100.0.0/16): Admin-facing applications
+  - Customer Portal Dev (10.110.0.0/16): Customer-facing applications
+- **IPAM**: Programmatic IP allocation via `ipam.yaml`
+
+### 3. Policy Governance
+
+Baseline Azure policies deployed via ALZ module:
 
 - **Security**: Deny public IP addresses, require encryption
 - **Compliance**: Allowed locations, required tags
-- **Monitoring**: Enable Azure Monitor, diagnostic settings
-- **Networking**: NSG rules, Azure Firewall policies
+- **Monitoring**: Enable Azure Monitor, diagnostic settings (planned)
+- **Networking**: NSG rules, Azure Firewall policies (planned)
 
-### 3. Policy Customization
+### 4. Reusable Modules
+
+Azure Verified Modules (AVM) wrappers for consistency:
+
+- **Resource Groups**: Standardized naming and tagging
+- **Virtual Networks**: Hub-and-spoke patterns with subnets
+- **Static Web Apps**: Free tier with optional private endpoints
+- **Log Analytics**: Centralized logging (planned)
+- **Naming Convention**: Consistent Azure resource naming
+
+### 5. Infrastructure as Code Best Practices
+
+- **Remote State**: Azure Storage backend for team collaboration
+- **Layered Deployment**: Bootstrap → Foundation → Landing Zones → Workloads
+- **Modular Design**: Shared modules for reusability
+- **IPAM**: Centralized IP address management
+- **Parallel Deployments**: Concurrent spoke VNet deployments for speed
 
 The configuration demonstrates how to modify policies:
 
@@ -257,11 +375,11 @@ module "alz" {
   subscription_placement = {
     prod_subscription = {
       subscription_id       = "00000000-0000-0000-0000-000000000000"
-      management_group_name = "corp"
+      management_group_name = "acme-workloads"
     }
     dev_subscription = {
       subscription_id       = "11111111-1111-1111-1111-111111111111"
-      management_group_name = "online"
+      management_group_name = "acme-workloads"
     }
   }
 }

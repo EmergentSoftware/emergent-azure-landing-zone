@@ -17,10 +17,12 @@ module "app_service_plan" {
   source  = "Azure/avm-res-web-serverfarm/azurerm"
   version = "~> 0.2"
 
-  name                = var.name
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  os_type             = var.os_type
-  sku_name            = var.sku_name
-  tags                = var.tags
+  name                   = var.name
+  resource_group_name    = var.resource_group_name
+  location               = var.location
+  os_type                = var.os_type
+  sku_name               = var.sku_name
+  worker_count           = 1     # Set to 1 for Basic/Standard SKUs to avoid quota issues
+  zone_balancing_enabled = false # Disable for Basic/Standard SKUs
+  tags                   = var.tags
 }

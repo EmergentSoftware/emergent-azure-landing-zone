@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "subscriptions": [
+    "acme-alz-management",
+    "acme-alz-connectivity",
+    "acme-alz-identity",
+    "acme-portal-dev",
+    "acme-portal-prod"
+  ]
+}

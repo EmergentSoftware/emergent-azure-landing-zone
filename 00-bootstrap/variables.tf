@@ -3,7 +3,7 @@
 # =============================================================================
 
 variable "subscription_id" {
-  description = "Azure subscription ID where the state storage will be created"
+  description = "Azure subscription ID where the state storage will be created (platform/management subscription)"
   type        = string
 }
 
@@ -58,14 +58,21 @@ variable "environment" {
   default     = "prod"
 }
 
-variable "additional_containers" {
-  description = "Additional blob containers to create (beyond the default foundation, landing-zones, workloads)"
+variable "containers" {
+  description = "List of blob container names to create for Terraform state storage"
   type        = list(string)
-  default     = []
+  default = [
+    "tfstate-foundation",
+    "tfstate-connectivity",
+    "tfstate-identity",
+    "tfstate-management",
+    "tfstate-portal-dev",
+    "tfstate-portal-prod"
+  ]
 
   validation {
     condition = alltrue([
-      for container in var.additional_containers :
+      for container in var.containers :
       can(regex("^[a-z0-9]([a-z0-9-]{1,61}[a-z0-9])?$", container))
     ])
     error_message = "Container names must be 3-63 characters, lowercase letters, numbers, and hyphens only."

@@ -2,6 +2,16 @@
 # Variables for Azure Landing Zone Deployment
 # =============================================================================
 
+variable "subscription_id" {
+  description = "Azure subscription ID for the management subscription"
+  type        = string
+}
+
+variable "tenant_id" {
+  description = "Azure AD tenant ID"
+  type        = string
+}
+
 variable "default_location" {
   description = "The default Azure region for policy managed identities and resources"
   type        = string

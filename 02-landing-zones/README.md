@@ -1,369 +1,339 @@
-# Landing Zone Subscription Placement
+# Landing Zone Subscription Placement and Network Infrastructure
 
-This directory contains configurations for placing Azure subscriptions into landing zone management groups with shared networking and monitoring resources.
+This directory contains configurations for placing Azure subscriptions into their respective management groups and deploying landing zone network infrastructure.
 
 ## Structure
 
-Each landing zone type has its own directory:
-
 ```
 landing-zones/
-├── corp/                    Corporate landing zones (internal apps)
+├── connectivity/              Platform - Connectivity subscription & hub networking
 │   ├── main.tf
+│   ├── network.tf            Hub VNet (10.0.0.0/16)
+│   ├── private-dns.tf        Private DNS zones for Azure services
 │   ├── variables.tf
 │   ├── outputs.tf
-│   └── terraform.tfvars.example
-├── online/                  Online landing zones (internet-facing apps)
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   └── terraform.tfvars.example
-└── README.md               This file
+│   ├── terraform.tfvars
+│   └── README.md
+│
+├── workloads/                 Workload landing zones with spoke networks
+│   ├── portals-admin-dev/    Admin portal dev (10.100.0.0/16)
+│   │   ├── main.tf
+│   │   ├── network.tf        Spoke VNet for admin portal
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   └── README.md
+│   │
+│   └── portals-customer-dev/ Customer portal dev (10.110.0.0/16)
+│       ├── main.tf
+│       ├── network.tf        Spoke VNet for customer portal
+│       ├── variables.tf
+│       ├── outputs.tf
+│       └── README.md
+│
+├── ipam.yaml                  IP Address Management manifest
+└── README.md                  This file
 ```
 
-## Landing Zone Types
+## Network Architecture
 
-### Corporate (`corp/`)
-For internal, corporate applications:
-- **Management Group**: `acme-landingzones-corp`
-- **Network Range**: `10.0.0.0/16` (default)
-- **Connectivity**: Can be connected to on-premises via ExpressRoute/VPN
-- **DNS**: Typically uses corporate DNS servers
-- **Use Cases**: Intranet apps, internal APIs, employee portals
+### Hub-and-Spoke Topology
 
-### Online (`online/`)
-For internet-facing, public applications:
-- **Management Group**: `acme-landingzones-online`
-- **Network Range**: `10.1.0.0/16` (default)
-- **Connectivity**: Internet-facing with public endpoints
-- **DNS**: Azure default DNS
-- **Use Cases**: Public websites, customer APIs, e-commerce
+```
+Connectivity (Hub)
+├── Hub VNet: 10.0.0.0/16
+│   ├── GatewaySubnet: 10.0.0.0/27
+│   ├── AzureFirewallSubnet: 10.0.1.0/26
+│   ├── AzureBastionSubnet: 10.0.2.0/26
+│   ├── Shared Services: 10.0.10.0/24
+│   ├── NVA: 10.0.11.0/24
+│   └── Management: 10.0.12.0/24
+│
+└── Private DNS Zones
+    ├── privatelink.azurestaticapps.net
+    ├── privatelink.blob.core.windows.net
+    ├── privatelink.database.windows.net
+    └── ... (see connectivity/README.md for full list)
+
+Portals Admin Dev (Spoke)
+└── Spoke VNet: 10.100.0.0/16
+    ├── Apps: 10.100.1.0/24
+    ├── Private Endpoints: 10.100.2.0/24
+    ├── VNet Integration: 10.100.3.0/24
+    └── Data: 10.100.4.0/24
+
+Portals Customer Dev (Spoke)
+└── Spoke VNet: 10.110.0.0/16
+    ├── Apps: 10.110.1.0/24
+    ├── Private Endpoints: 10.110.2.0/24
+    ├── VNet Integration: 10.110.3.0/24
+    └── Data: 10.110.4.0/24
+```
+
+## Platform Landing Zones
+
+### Connectivity
+- **Management Group**: `acme-connectivity`
+- **Subscription ID**: `c82e0943-3765-49ff-97ff-92855167f3ea`
+- **Purpose**: Hub networking, private DNS zones, VPN/ExpressRoute, firewalls
+- **Network**: Hub VNet (10.0.0.0/16)
+- **Deployment**: `cd connectivity && terraform apply -var-file="terraform.tfvars"`
+
+## Workload Landing Zones
+
+### Portals Admin Dev
+- **Management Group**: `acme-portals`
+- **Subscription ID**: `588aa873-b13e-40bc-a96f-89805c56d7d0`
+- **Purpose**: Admin portal development environment with isolated network
+- **Network**: Spoke VNet (10.100.0.0/16)
+- **Deployment**: `cd workloads/portals-admin-dev && terraform apply`
+
+### Portals Customer Dev
+- **Management Group**: `acme-portals`
+- **Subscription ID**: `9a877ddf-9796-43a8-a557-f6af1df195bf`
+- **Purpose**: Customer portal development environment with isolated network
+- **Network**: Spoke VNet (10.110.0.0/16)
+- **Deployment**: `cd workloads/portals-customer-dev && terraform apply`
 
 ## Quick Start
 
-### 1. Choose Landing Zone Type
+### 1. Deploy Connectivity (Hub Network + Private DNS)
 
-Decide whether your workload is corporate (internal) or online (public-facing).
+```powershell
+cd connectivity
 
-### 2. Configure the Landing Zone
+# Initialize backend
+terraform init -reconfigure `
+  -backend-config="resource_group_name=acme-rg-prod-eus-vw01" `
+  -backend-config="storage_account_name=acmestprodeusvw01" `
+  -backend-config="container_name=tfstate-connectivity" `
+  -backend-config="key=connectivity.tfstate"
 
-```bash
-# For Corporate Landing Zone
-cd landing-zones/corp
-cp terraform.tfvars.example terraform.tfvars
-
-# OR for Online Landing Zone
-cd landing-zones/online
-cp terraform.tfvars.example terraform.tfvars
+# Deploy hub VNet and private DNS zones
+terraform apply -var-file="terraform.tfvars"
 ```
 
-### 3. Edit Configuration
+This creates:
+- Hub VNet (10.0.0.0/16) with 6 subnets
+- Private DNS zones for Azure services
+- VNet links from private DNS zones to hub VNet
 
-Edit `terraform.tfvars`:
-- Update `landing_zone_name` (e.g., "corp-web-apps" or "online-apis")
-- Customize network address space if needed
-- Configure subnets for your workload types
-- Set custom DNS servers (corp) or use Azure default (online)
+### 2. Deploy Workload Landing Zones (Spoke Networks)
 
-### 4. Deploy
+Deploy both portals in parallel for faster completion:
 
-```bash
-terraform init
-terraform plan
+```powershell
+# Admin portal network (10.100.0.0/16)
+cd workloads/portals-admin-dev
+terraform init -reconfigure `
+  -backend-config="resource_group_name=acme-rg-prod-eus-vw01" `
+  -backend-config="storage_account_name=acmestprodeusvw01" `
+  -backend-config="container_name=tfstate-portal-dev" `
+  -backend-config="key=portals-admin-dev.tfstate"
+terraform apply
+
+# Customer portal network (10.110.0.0/16)
+cd ../portals-customer-dev
+terraform init -reconfigure `
+  -backend-config="resource_group_name=acme-rg-prod-eus-vw01" `
+  -backend-config="storage_account_name=acmestprodeusvw01" `
+  -backend-config="container_name=tfstate-portal-dev" `
+  -backend-config="key=portals-customer-dev.tfstate"
 terraform apply
 ```
 
-### 5. Get Outputs
+Each creates:
+- Spoke VNet with 4 subnets (apps, private endpoints, integration, data)
+- Log Analytics workspace
+- Network resource group
+- Monitoring resource group
+- Subscription association to acme-portals management group
 
-```bash
-# Virtual Network ID (for workload integration)
-terraform output -raw virtual_network_id
+## IPAM - IP Address Management
 
-# Subnet IDs (for deploying resources)
-terraform output subnets
+All network IP allocations are defined in `ipam.yaml`:
 
-# Log Analytics workspace (for diagnostics)
-terraform output -raw log_analytics_workspace_resource_id
+```yaml
+connectivity:
+  hub:
+    vnet: 10.0.0.0/16
+    
+portals-admin-dev:
+  vnet: 10.100.0.0/16
+  
+portals-customer-dev:
+  vnet: 10.110.0.0/16
 ```
 
-## What Each Landing Zone Creates
+The Terraform configurations read from this file to ensure consistent IP allocation across all landing zones.
 
-### Networking Resources
-- **Resource Group**: `rg-{landing_zone_name}-networking-{location}`
-- **Virtual Network**: `vnet-{landing_zone_name}-{location}`
-  - Subnets as configured (default, webapp, data, etc.)
-  - Service endpoints enabled per subnet
-  - Optional custom DNS servers
+## Private DNS Integration
 
-### Monitoring Resources
-- **Resource Group**: `rg-{landing_zone_name}-monitoring-{location}`
-- **Log Analytics Workspace**: `log-{landing_zone_name}-{location}`
-  - Configurable retention period
-  - Shared by all workloads in this landing zone
+Private DNS zones are centralized in the connectivity subscription:
 
-### Management
-- **Subscription Association**: Links subscription to management group
-  - Inherits policies from ALZ foundation
-  - Enables governance and compliance
+- **Static Web Apps**: `privatelink.azurestaticapps.net`
+- **Storage**: blob, file, table, queue endpoints
+- **SQL Database**: `privatelink.database.windows.net`
+- **Cosmos DB**: `privatelink.documents.azure.com`
+- **Key Vault**: `privatelink.vaultcore.azure.net`
+- **App Service**: `privatelink.azurewebsites.net`
+- **Container Registry**: `privatelink.azurecr.io`
+- **Service Bus / Event Hub**: `privatelink.servicebus.windows.net`
 
-## Example: Corporate Web Applications
+Once VNet peering is configured, spoke VNets automatically resolve private endpoints using these zones.
 
-```bash
-cd landing-zones/corp
-```
+## Network Isolation Strategy
 
-Edit `terraform.tfvars`:
-```hcl
-landing_zone_name = "corp-web-apps"
-location          = "eastus"
+Each portal workload has its own dedicated VNet in its own subscription:
 
-vnet_address_space = ["10.10.0.0/16"]
+- **Admin Portal**: Isolated network in subscription `588aa873-b13e-40bc-a96f-89805c56d7d0`
+- **Customer Portal**: Isolated network in subscription `9a877ddf-9796-43a8-a557-f6af1df195bf`
 
-vnet_subnets = {
-  frontend = {
-    address_prefixes  = ["10.10.1.0/24"]
-    service_endpoints = ["Microsoft.Web"]
-  }
-  backend = {
-    address_prefixes  = ["10.10.2.0/24"]
-    service_endpoints = ["Microsoft.Web", "Microsoft.Sql"]
-  }
-  database = {
-    address_prefixes  = ["10.10.3.0/24"]
-    service_endpoints = ["Microsoft.Sql", "Microsoft.Storage"]
-  }
-}
-
-vnet_dns_servers = ["10.100.1.4", "10.100.1.5"]  # Corporate DNS
-```
-
-Deploy:
-```bash
-terraform apply
-```
-
-## Example: Online API Platform
-
-```bash
-cd landing-zones/online
-```
-
-Edit `terraform.tfvars`:
-```hcl
-landing_zone_name = "online-public-apis"
-location          = "eastus"
-
-vnet_address_space = ["10.20.0.0/16"]
-
-vnet_subnets = {
-  apim = {
-    address_prefixes  = ["10.20.1.0/24"]
-    service_endpoints = ["Microsoft.Web", "Microsoft.KeyVault"]
-  }
-  backend = {
-    address_prefixes  = ["10.20.2.0/24"]
-    service_endpoints = ["Microsoft.Web", "Microsoft.Sql", "Microsoft.Storage"]
-  }
-}
-
-# Use Azure default DNS for internet-facing workloads
-vnet_dns_servers = null
-```
-
-Deploy:
-```bash
-terraform apply
-```
-
-## Multiple Landing Zones
-
-You can create multiple instances of the same type:
-
-### Option A: Terraform Workspaces
-
-```bash
-cd landing-zones/corp
-
-# Create workspace for dev environment
-terraform workspace new corp-dev
-terraform apply -var="landing_zone_name=corp-dev-apps"
-
-# Create workspace for prod environment
-terraform workspace new corp-prod
-terraform apply -var="landing_zone_name=corp-prod-apps"
-```
-
-### Option B: Separate Directories
-
-```bash
-mkdir -p landing-zones/corp-dev
-mkdir -p landing-zones/corp-prod
-
-# Create symlinks to shared files
-cd landing-zones/corp-dev
-ln -s ../corp/main.tf .
-ln -s ../corp/variables.tf .
-ln -s ../corp/outputs.tf .
-
-# Create unique terraform.tfvars for each
-```
-
-## Purpose
-
-In Azure Landing Zones architecture:
-1. **ALZ Foundation** creates the management group hierarchy and policies
-2. **Landing Zone Placement** (this) associates subscriptions with management groups
-3. **Workloads** deploy application resources into the placed subscriptions
+This provides:
+- Security boundary separation
+- Independent network policies and NSGs
+- Separate blast radius
+- Compliance with workload-per-subscription model
 
 ## Deployment Order
 
 ```
-Step 1: alz-foundation/     → Creates management groups & policies
+Step 1: 01-foundation/          → Creates management groups & policies
          ↓
-Step 2: landing-zones/      → Places subscription into management group (THIS)
-         ↓
-Step 3: workloads/web-app/  → Deploys application resources
+Step 2: 02-landing-zones/       → Places subscriptions into management groups (THIS)
+         ↓  
+Step 3: 03-workloads/           → Deploys application resources
 ```
 
-## Management Group Options
+## Backend Configuration
 
-Based on the ALZ foundation, you can place subscriptions into:
+Each landing zone uses a separate Terraform state in the `tfstate-portal-dev` container (shared by portal landing zones) or dedicated containers:
 
-- **`acme-landingzones-corp`** - For corporate/internal applications
-  - Connected to on-premises via ExpressRoute/VPN
-  - Stricter compliance and security policies
-  
-- **`acme-landingzones-online`** - For internet-facing applications
-  - Public endpoints allowed
-  - More flexible networking
+- **connectivity**: `tfstate-connectivity` container → `connectivity.tfstate`
+- **portals-admin-dev**: `tfstate-portal-dev` container → `portals-admin-dev.tfstate`
+- **portals-customer-dev**: `tfstate-portal-dev` container → `portals-customer-dev.tfstate`
 
-- **`acme-platform`** - For platform services (monitoring, connectivity, identity)
+All state files are stored in:
+- **Resource Group**: `acme-rg-prod-eus-vw01`
+- **Storage Account**: `acmestprodeusvw01`
 
-## Quick Start
+## Next Steps
 
-### 1. Deploy ALZ Foundation First
+After deploying landing zones:
 
-```bash
-cd alz-foundation
-terraform init
-terraform plan
-terraform apply
+1. **Configure VNet Peering** (hub ↔ spokes)
+   - Peer hub VNet to portals-admin-dev VNet
+   - Peer hub VNet to portals-customer-dev VNet
+
+2. **Deploy Workloads**
+   - `03-workloads/portals/admin-portal` - Admin portal Static Web App
+   - `03-workloads/portals/customer-portal` - Customer portal Static Web App
+
+3. **Add Private Endpoints**
+   - Configure Static Web Apps to use private endpoints
+   - Endpoints will use centralized private DNS zones
+
+## Verification
+
+Verify network deployment:
+
+```powershell
+# Check connectivity hub VNet
+az network vnet show --name vnet-hub-prod-eus2 `
+  --resource-group acme-rg-connectivity-network-prod-eus2-{unique}
+
+# Check admin portal spoke VNet
+az network vnet show --name vnet-portals-admin-dev-eus2 `
+  --resource-group acme-rg-portals-admin-network-dev-eus2
+
+# Check customer portal spoke VNet
+az network vnet show --name vnet-portals-customer-dev-eus2 `
+  --resource-group acme-rg-portals-customer-network-dev-eus2
+
+# List private DNS zones
+az network private-dns zone list `
+  --resource-group acme-rg-connectivity-privatedns-prod-eus2-{unique} `
+  --output table
 ```
 
-### 2. Configure Landing Zone
+# Check management subscription
+az account management-group show --name acme-management
 
-```bash
-cd ../landing-zones
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your values
+# Check portals dev subscription
+az account management-group show --name acme-portals
 ```
 
-Key settings:
-- `landing_zone_management_group_name`: Use `acme-landingzones-corp` or `acme-landingzones-online`
-- `workload_subscription_id`: The subscription to place in the landing zone
+## Notes
 
-### 3. Deploy Landing Zone Placement
+- Platform subscriptions (connectivity, identity, management) only create subscription associations
+- Workload subscriptions (portals-dev) also create Log Analytics workspace for monitoring
+- All subscription IDs are set as defaults in `variables.tf` files
+- Only `tenant_id` needs to be provided in `terraform.tfvars`
 
-```bash
-terraform init
-terraform plan
-terraform apply
-```
+## Creating Additional Landing Zones
 
-### 4. Get Log Analytics Workspace ID
+To create a new workload landing zone:
 
-```bash
-terraform output log_analytics_workspace_resource_id
-```
+1. **Copy an existing landing zone** as a template:
+   ```bash
+   cp -r workloads/portals-dev workloads/my-new-app
+   ```
 
-Copy this value - you'll use it in your workload deployments.
+2. **Update the configuration** in `terraform.tfvars`:
+   ```hcl
+   landing_zone_name = "my-new-app"
+   environment       = "dev"  # or "prod"
+   subscription_id   = "your-subscription-id"
+   ```
 
-### 5. Deploy Workloads
+3. **Update naming suffix** in `main.tf`:
+   ```hcl
+   module "naming" {
+     source   = "../../../shared-modules/naming"
+     location = var.location
+     suffix   = ["myapp", var.environment]  # Change "myapp" to your identifier
+   }
+   ```
 
-```bash
-cd ../workloads/web-app
-# Update terraform.tfvars with the Log Analytics workspace ID from step 4
-terraform init
-terraform plan
-terraform apply
-```
-
-## What This Creates
-
-### Subscription Association
-- Places your subscription under the specified management group
-- Inherits all policies from the management group hierarchy
-
-### Optional Monitoring Resources
-If `create_log_analytics = true`:
-- **Resource Group**: `rg-{landing_zone_name}-monitoring-{location}`
-- **Log Analytics Workspace**: `log-{landing_zone_name}-{location}`
-
-These can be shared by all workloads in this landing zone.
-
-## Example Scenarios
-
-### Scenario 1: Corporate Web Application
-
-```hcl
-landing_zone_name                  = "corp-web-apps"
-landing_zone_management_group_name = "acme-landingzones-corp"
-workload_subscription_id           = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-```
-
-### Scenario 2: Public API Platform
-
-```hcl
-landing_zone_name                  = "online-public-apis"
-landing_zone_management_group_name = "acme-landingzones-online"
-workload_subscription_id           = "yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy"
-```
-
-## Multiple Landing Zones
-
-To create multiple landing zones, either:
-
-**Option A: Use Workspaces**
-```bash
-terraform workspace new prod-corp
-terraform workspace new prod-online
-terraform workspace select prod-corp
-terraform apply
-```
-
-**Option B: Separate Directories**
-```
-landing-zones/
-├── corp-web-apps/
-│   ├── main.tf -> ../main.tf (symlink)
-│   └── terraform.tfvars
-└── online-apis/
-    ├── main.tf -> ../main.tf (symlink)
-    └── terraform.tfvars
-```
+4. **Deploy**:
+   ```bash
+   cd workloads/my-new-app
+   terraform init -backend-config=../../../00-bootstrap/backend-config-my-new-app.txt
+   terraform apply
+   ```
 
 ## Outputs
 
-Use these outputs in your workload deployments:
+Each landing zone provides outputs for connecting workloads:
 
 ```bash
-# Get the Log Analytics workspace ID for workload diagnostics
-terraform output -raw log_analytics_workspace_resource_id
+# Networking outputs
+terraform output networking_resource_group_name
+terraform output virtual_network_name
+terraform output virtual_network_id
+terraform output subnets
 
-# Verify subscription placement
-terraform output management_group_id
+# Monitoring outputs
+terraform output monitoring_resource_group_name
+terraform output log_analytics_workspace_id
+terraform output log_analytics_workspace_name
 ```
 
-## Connect to Workloads
+## Using Landing Zone Resources in Workloads
 
-In your workload's `terraform.tfvars`:
+Reference the landing zone's networking and monitoring resources in your workload deployments:
 
 ```hcl
-# From landing-zones output
-log_analytics_workspace_id = "/subscriptions/.../resourceGroups/rg-corp-web-apps-monitoring-eastus/providers/Microsoft.OperationalInsights/workspaces/log-corp-web-apps-eastus"
+# Get the VNet for peering or subnet references
+data "azurerm_virtual_network" "landing_zone" {
+  name                = "acme-vnet-portals-dev-eus-xxxx"
+  resource_group_name = "acme-rg-portals-dev-eus-net"
+}
 
-# Ensure subscription_id matches
-subscription_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+# Get the Log Analytics workspace for diagnostics
+data "azurerm_log_analytics_workspace" "landing_zone" {
+  name                = "acme-log-portals-dev-eus-xxxx"
+  resource_group_name = "acme-rg-portals-dev-eus-mon"
+}
 ```
 
 ## Policy Compliance
@@ -373,52 +343,77 @@ After placing a subscription into a landing zone:
 - Some policies may require specific configurations (e.g., allowed locations)
 - Review policy assignments in the Azure Portal
 
+## Naming Convention
+
+All resources follow a consistent naming pattern:
+
+```
+Pattern: acme-{resource-type}-{landing-zone}-{environment}-{region-abbr}-{role}
+
+Examples:
+- acme-rg-mgmt-prod-eus-net         (Management networking RG)
+- acme-rg-portals-dev-eus-mon       (Portals monitoring RG)
+- acme-vnet-mgmt-prod-eus-jdqy      (Management VNet with unique suffix)
+- acme-log-portals-dev-eus-zwtx     (Portals Log Analytics)
+```
+
+**Components:**
+- `acme` - Organization prefix
+- `{resource-type}` - Azure resource type (rg, vnet, log, etc.)
+- `{landing-zone}` - Landing zone identifier (mgmt, portals, etc.)
+- `{environment}` - Environment (prod, dev, test)
+- `{region-abbr}` - Abbreviated region (eus = East US)
+- `{role}` - Resource purpose (net = networking, mon = monitoring)
+- `{unique}` - Auto-generated 4-character suffix for globally unique names
+
 ## Troubleshooting
 
 ### Subscription Not Moving
-
-If the subscription doesn't appear under the management group:
-1. Verify you have Owner or User Access Administrator role on the subscription
-2. Check Azure Portal → Management Groups → Find your subscription
-3. Wait a few minutes for Azure Resource Manager to propagate changes
+1. Verify Owner or User Access Administrator role on the subscription
+2. Check Azure Portal → Management Groups
+3. Wait a few minutes for propagation
 
 ### Policy Conflicts
-
-If workload deployment fails due to policies:
 1. Check Azure Portal → Policy → Compliance
-2. Review denied operations in Activity Log
-3. Either fix the workload to comply, or modify policy assignments in alz-foundation
+2. Review Activity Log for denied operations
+3. Update workload to comply or adjust policies in foundation
 
-### Log Analytics Access
-
-If workloads can't write to Log Analytics:
-1. Verify the workspace exists: `terraform output log_analytics_workspace_id`
-2. Ensure workload's managed identity has Contributor role on workspace
-3. Check firewall rules if workspace has network restrictions
+### State Lock Issues
+If terraform operations fail due to state locks:
+```bash
+terraform force-unlock <lock-id>
+```
 
 ## Best Practices
 
-1. **One Landing Zone per Subscription Type**: Separate corp vs online workloads
-2. **Shared Monitoring**: Use the landing zone's Log Analytics for all workloads
-3. **Consistent Naming**: Use `{org}-landingzones-{type}` pattern
-4. **Tag Everything**: Apply consistent tags for cost tracking
-5. **Document Dependencies**: Note which workloads depend on this landing zone
+1. **Separate Landing Zones**: One per workload type or application family
+2. **Shared Infrastructure**: Use landing zone VNet and Log Analytics for all related workloads
+3. **Consistent Naming**: Follow the established naming convention
+4. **Resource Tagging**: Apply consistent tags for cost tracking and governance
+5. **Network Planning**: Ensure VNet address spaces don't overlap between landing zones
 
 ## Clean Up
 
-To remove a landing zone (WARNING: This affects all workloads):
+To remove a landing zone (⚠️ WARNING: Destroy workloads first):
 
 ```bash
-# 1. Destroy all workloads first
-cd ../workloads/web-app
+# 1. Destroy all workloads using this landing zone
+cd ../../03-workloads/portals
 terraform destroy
 
-# 2. Then destroy the landing zone
-cd ../../landing-zones
+# 2. Then destroy the landing zone infrastructure
+cd ../../02-landing-zones/workloads/portals-dev
 terraform destroy
 ```
 
 This will:
+- Delete virtual network and subnets
+- Delete Log Analytics workspace (❌ logs will be lost)
+- Delete resource groups
 - Remove subscription from management group
-- Delete Log Analytics workspace and monitoring resources
-- Workloads will lose inherited policies
+
+## Additional Resources
+
+- [Azure Landing Zones Documentation](https://learn.microsoft.com/azure/cloud-adoption-framework/ready/landing-zone/)
+- [Azure Verified Modules](https://azure.github.io/Azure-Verified-Modules/)
+- [Cloud Adoption Framework](https://learn.microsoft.com/azure/cloud-adoption-framework/)

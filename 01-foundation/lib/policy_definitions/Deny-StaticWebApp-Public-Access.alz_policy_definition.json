@@ -1,0 +1,40 @@
+{
+  "name": "Deny-StaticWebApp-Public-Access",
+  "properties": {
+    "displayName": "Static Web Apps should use private endpoints",
+    "description": "Denies the creation of Static Web Apps without private endpoint configurations. This ensures all Static Web Apps use private connectivity instead of public endpoints.",
+    "mode": "Indexed",
+    "metadata": {
+      "version": "1.0.0",
+      "category": "Web"
+    },
+    "parameters": {
+      "effect": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Effect",
+          "description": "Enable or disable the execution of the policy"
+        },
+        "allowedValues": ["Audit", "Deny", "Disabled"],
+        "defaultValue": "Deny"
+      }
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {
+            "field": "type",
+            "equals": "Microsoft.Web/staticSites"
+          },
+          {
+            "field": "Microsoft.Web/staticSites/publicNetworkAccess",
+            "notEquals": "Disabled"
+          }
+        ]
+      },
+      "then": {
+        "effect": "[parameters('effect')]"
+      }
+    }
+  }
+}

@@ -21,6 +21,9 @@ resource "azurerm_static_web_app" "this" {
   sku_tier            = var.sku_tier
   sku_size            = var.sku_size
 
+  # Disable public network access if private endpoints are configured
+  public_network_access_enabled = var.private_endpoint_subnet_id != null ? false : var.public_network_access_enabled
+
   tags = var.tags
 
   dynamic "identity" {
@@ -29,4 +32,20 @@ resource "azurerm_static_web_app" "this" {
       type = "SystemAssigned"
     }
   }
+}
+
+# Private Endpoint for Static Web App
+module "private_endpoint" {
+  source = "../private-endpoint"
+  count  = var.private_endpoint_subnet_id != null ? 1 : 0
+
+  name                           = "${var.name}-pe"
+  location                       = var.location
+  resource_group_name            = var.resource_group_name
+  subnet_id                      = var.private_endpoint_subnet_id
+  private_connection_resource_id = azurerm_static_web_app.this.id
+  subresource_names              = ["staticSites"]
+  private_dns_zone_ids           = var.private_dns_zone_ids
+
+  tags = var.tags
 }

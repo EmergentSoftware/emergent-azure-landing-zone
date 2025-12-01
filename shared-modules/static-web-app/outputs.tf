@@ -23,3 +23,13 @@ output "name" {
   description = "The name of the Static Web App"
   value       = azurerm_static_web_app.this.name
 }
+
+output "private_endpoint_id" {
+  description = "The ID of the private endpoint (if created)"
+  value       = try(module.private_endpoint[0].id, null)
+}
+
+output "private_endpoint_ip" {
+  description = "The private IP address of the private endpoint (if created)"
+  value       = try(module.private_endpoint[0].private_ip_address, null)
+}

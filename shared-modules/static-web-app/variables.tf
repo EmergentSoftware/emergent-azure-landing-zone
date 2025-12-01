@@ -41,6 +41,24 @@ variable "enable_managed_identity" {
   default     = true
 }
 
+variable "public_network_access_enabled" {
+  description = "Enable public network access for the Static Web App. Automatically set to false when private_endpoint_subnet_id is provided."
+  type        = bool
+  default     = false
+}
+
+variable "private_endpoint_subnet_id" {
+  description = "The ID of the subnet where the private endpoint will be created. If provided, a private endpoint will be created and public access will be disabled."
+  type        = string
+  default     = null
+}
+
+variable "private_dns_zone_ids" {
+  description = "List of private DNS zone IDs to associate with the private endpoint. Required when private_endpoint_subnet_id is provided."
+  type        = list(string)
+  default     = null
+}
+
 variable "tags" {
   description = "A mapping of tags to assign to the resource"
   type        = map(string)

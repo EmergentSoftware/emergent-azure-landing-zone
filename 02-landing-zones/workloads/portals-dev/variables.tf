@@ -24,7 +24,19 @@ variable "environment" {
 variable "location" {
   description = "Azure region for shared resources"
   type        = string
-  default     = "eastus"
+  default     = "eastus2"
+}
+
+variable "location_short" {
+  description = "Short name for Azure region"
+  type        = string
+  default     = "eus2"
+}
+
+variable "dns_servers" {
+  description = "List of DNS servers for the VNet (empty = Azure default DNS)"
+  type        = list(string)
+  default     = []
 }
 
 # Networking Variables

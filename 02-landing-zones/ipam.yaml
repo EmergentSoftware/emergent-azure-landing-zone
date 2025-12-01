@@ -1,0 +1,332 @@
+# =============================================================================
+# IPAM Manifest - IP Address Management for ACME Azure Landing Zone
+# This file defines the network topology and IP allocation for all landing zones
+# =============================================================================
+#
+# Network Architecture:
+# - Hub-and-Spoke topology
+# - Hub VNet in Connectivity subscription (10.0.0.0/16)
+# - Spoke VNets in workload subscriptions (10.100.0.0/16+)
+# - /24 subnets for granular security and scalability
+#
+# =============================================================================
+
+# =============================================================================
+# HUB VNET - Connectivity Landing Zone
+# =============================================================================
+connectivity:
+  hub:
+    location: "eastus2"
+    location_short: "eus2"
+    vnet:
+      name: "vnet-hub-prod-eus2"
+      address_space: "10.0.0.0/16"
+      dns_servers: []  # Use Azure default DNS
+      
+    subnets:
+      # Azure Gateway Subnet (for VPN/ExpressRoute Gateway)
+      - name: "GatewaySubnet"
+        address_prefix: "10.0.0.0/27"
+        purpose: "VPN/ExpressRoute Gateway"
+        service_endpoints: []
+        delegations: []
+        
+      # Azure Firewall Subnet
+      - name: "AzureFirewallSubnet"
+        address_prefix: "10.0.1.0/26"
+        purpose: "Azure Firewall"
+        service_endpoints: []
+        delegations: []
+        
+      # Azure Bastion Subnet
+      - name: "AzureBastionSubnet"
+        address_prefix: "10.0.2.0/26"
+        purpose: "Azure Bastion for secure VM access"
+        service_endpoints: []
+        delegations: []
+        
+      # Shared Services Subnet
+      - name: "snet-hub-sharedservices-prod-eus2"
+        address_prefix: "10.0.10.0/24"
+        purpose: "Shared services (DNS, Domain Controllers, etc.)"
+        service_endpoints: ["Microsoft.Storage", "Microsoft.KeyVault"]
+        delegations: []
+        
+      # Network Virtual Appliances (NVA)
+      - name: "snet-hub-nva-prod-eus2"
+        address_prefix: "10.0.11.0/24"
+        purpose: "Network virtual appliances"
+        service_endpoints: []
+        delegations: []
+        
+      # Management and Monitoring
+      - name: "snet-hub-management-prod-eus2"
+        address_prefix: "10.0.12.0/24"
+        purpose: "Management tools and monitoring"
+        service_endpoints: ["Microsoft.Storage"]
+        delegations: []
+
+# =============================================================================
+# SPOKE VNETS - Workload Landing Zones
+# =============================================================================
+
+# Identity Landing Zone
+identity:
+  location: "eastus2"
+  location_short: "eus2"
+  vnet:
+    name: "vnet-identity-prod-eus2"
+    address_space: "10.1.0.0/16"
+    dns_servers: []
+    
+  subnets:
+    - name: "snet-identity-domaincontrollers-prod-eus2"
+      address_prefix: "10.1.0.0/24"
+      purpose: "Domain Controllers"
+      service_endpoints: ["Microsoft.Storage", "Microsoft.KeyVault"]
+      delegations: []
+      
+    - name: "snet-identity-adconnect-prod-eus2"
+      address_prefix: "10.1.1.0/24"
+      purpose: "Azure AD Connect servers"
+      service_endpoints: ["Microsoft.Storage"]
+      delegations: []
+
+# Management Landing Zone
+management:
+  location: "eastus2"
+  location_short: "eus2"
+  vnet:
+    name: "vnet-management-prod-eus2"
+    address_space: "10.2.0.0/16"
+    dns_servers: []
+    
+  subnets:
+    - name: "snet-management-monitoring-prod-eus2"
+      address_prefix: "10.2.0.0/24"
+      purpose: "Log Analytics, monitoring solutions"
+      service_endpoints: ["Microsoft.Storage"]
+      delegations: []
+      
+    - name: "snet-management-automation-prod-eus2"
+      address_prefix: "10.2.1.0/24"
+      purpose: "Azure Automation, runbooks"
+      service_endpoints: ["Microsoft.Storage"]
+      delegations: []
+
+# Portals Landing Zone - Development
+portals-dev:
+  location: "eastus2"
+  location_short: "eus2"
+  vnet:
+    name: "vnet-portals-dev-eus2"
+    address_space: "10.100.0.0/16"
+    dns_servers: []
+    
+  subnets:
+    # Application Subnet - For app workloads
+    - name: "snet-portals-apps-dev-eus2"
+      address_prefix: "10.100.1.0/24"
+      purpose: "Application workloads and compute"
+      service_endpoints: 
+        - "Microsoft.Web"
+        - "Microsoft.Storage"
+        - "Microsoft.KeyVault"
+        - "Microsoft.Sql"
+      delegations: []
+      
+    # Private Endpoints Subnet - For Static Web Apps and other PaaS
+    - name: "snet-portals-privateendpoints-dev-eus2"
+      address_prefix: "10.100.2.0/24"
+      purpose: "Private endpoints for Static Web Apps, Storage, etc."
+      service_endpoints: []
+      delegations: []
+      private_endpoint_network_policies: "Disabled"
+      
+    # VNet Integration Subnet - For App Service VNet integration
+    - name: "snet-portals-integration-dev-eus2"
+      address_prefix: "10.100.3.0/24"
+      purpose: "VNet integration for App Services (if needed)"
+      service_endpoints: 
+        - "Microsoft.Web"
+        - "Microsoft.Storage"
+      delegations:
+        - name: "delegation"
+          service_delegation:
+            name: "Microsoft.Web/serverFarms"
+            actions:
+              - "Microsoft.Network/virtualNetworks/subnets/action"
+              
+    # Data Services Subnet
+    - name: "snet-portals-data-dev-eus2"
+      address_prefix: "10.100.4.0/24"
+      purpose: "Database services and data platforms"
+      service_endpoints:
+        - "Microsoft.Sql"
+        - "Microsoft.Storage"
+      delegations: []
+
+# Portals Landing Zone - Production
+portals-prod:
+  location: "eastus2"
+  location_short: "eus2"
+  vnet:
+    name: "vnet-portals-prod-eus2"
+    address_space: "10.101.0.0/16"
+    dns_servers: []
+    
+  subnets:
+    # Application Subnet
+    - name: "snet-portals-apps-prod-eus2"
+      address_prefix: "10.101.1.0/24"
+      purpose: "Application workloads and compute"
+      service_endpoints: 
+        - "Microsoft.Web"
+        - "Microsoft.Storage"
+        - "Microsoft.KeyVault"
+        - "Microsoft.Sql"
+      delegations: []
+      
+    # Private Endpoints Subnet
+    - name: "snet-portals-privateendpoints-prod-eus2"
+      address_prefix: "10.101.2.0/24"
+      purpose: "Private endpoints for Static Web Apps, Storage, etc."
+      service_endpoints: []
+      delegations: []
+      private_endpoint_network_policies: "Disabled"
+      
+    # VNet Integration Subnet
+    - name: "snet-portals-integration-prod-eus2"
+      address_prefix: "10.101.3.0/24"
+      purpose: "VNet integration for App Services"
+      service_endpoints: 
+        - "Microsoft.Web"
+        - "Microsoft.Storage"
+      delegations:
+        - name: "delegation"
+          service_delegation:
+            name: "Microsoft.Web/serverFarms"
+            actions:
+              - "Microsoft.Network/virtualNetworks/subnets/action"
+              
+    # Data Services Subnet
+    - name: "snet-portals-data-prod-eus2"
+      address_prefix: "10.101.4.0/24"
+      purpose: "Database services and data platforms"
+      service_endpoints:
+        - "Microsoft.Sql"
+        - "Microsoft.Storage"
+      delegations: []
+
+# =============================================================================
+# VNET PEERING CONFIGURATION
+# =============================================================================
+# Hub-to-Spoke peering relationships
+peerings:
+  # Hub to Identity
+  - name: "peer-hub-to-identity"
+    source_vnet: "vnet-hub-prod-eus2"
+    destination_vnet: "vnet-identity-prod-eus2"
+    allow_forwarded_traffic: true
+    allow_gateway_transit: true
+    use_remote_gateways: false
+    
+  # Identity to Hub
+  - name: "peer-identity-to-hub"
+    source_vnet: "vnet-identity-prod-eus2"
+    destination_vnet: "vnet-hub-prod-eus2"
+    allow_forwarded_traffic: true
+    allow_gateway_transit: false
+    use_remote_gateways: true
+    
+  # Hub to Management
+  - name: "peer-hub-to-management"
+    source_vnet: "vnet-hub-prod-eus2"
+    destination_vnet: "vnet-management-prod-eus2"
+    allow_forwarded_traffic: true
+    allow_gateway_transit: true
+    use_remote_gateways: false
+    
+  # Management to Hub
+  - name: "peer-management-to-hub"
+    source_vnet: "vnet-management-prod-eus2"
+    destination_vnet: "vnet-hub-prod-eus2"
+    allow_forwarded_traffic: true
+    allow_gateway_transit: false
+    use_remote_gateways: true
+    
+  # Hub to Portals Dev
+  - name: "peer-hub-to-portals-dev"
+    source_vnet: "vnet-hub-prod-eus2"
+    destination_vnet: "vnet-portals-dev-eus2"
+    allow_forwarded_traffic: true
+    allow_gateway_transit: true
+    use_remote_gateways: false
+    
+  # Portals Dev to Hub
+  - name: "peer-portals-dev-to-hub"
+    source_vnet: "vnet-portals-dev-eus2"
+    destination_vnet: "vnet-hub-prod-eus2"
+    allow_forwarded_traffic: true
+    allow_gateway_transit: false
+    use_remote_gateways: true
+    
+  # Hub to Portals Prod
+  - name: "peer-hub-to-portals-prod"
+    source_vnet: "vnet-hub-prod-eus2"
+    destination_vnet: "vnet-portals-prod-eus2"
+    allow_forwarded_traffic: true
+    allow_gateway_transit: true
+    use_remote_gateways: false
+    
+  # Portals Prod to Hub
+  - name: "peer-portals-prod-to-hub"
+    source_vnet: "vnet-portals-prod-eus2"
+    destination_vnet: "vnet-hub-prod-eus2"
+    allow_forwarded_traffic: true
+    allow_gateway_transit: false
+    use_remote_gateways: true
+
+# =============================================================================
+# RESERVED ADDRESS SPACES
+# =============================================================================
+# Reserve address spaces for future expansion
+reserved:
+  # Additional workload landing zones
+  - range: "10.110.0.0/16"
+    purpose: "Reserved for future workload landing zone"
+  - range: "10.111.0.0/16"
+    purpose: "Reserved for future workload landing zone"
+  - range: "10.112.0.0/16"
+    purpose: "Reserved for future workload landing zone"
+    
+  # Azure services
+  - range: "10.200.0.0/16"
+    purpose: "Reserved for Azure services (Container Instances, etc.)"
+    
+  # On-premises networks (if applicable)
+  - range: "192.168.0.0/16"
+    purpose: "On-premises network (avoid conflicts)"
+
+# =============================================================================
+# NOTES
+# =============================================================================
+# IP Allocation Strategy:
+# - 10.0.0.0/16:     Hub (Connectivity)
+# - 10.1.0.0/16:     Identity
+# - 10.2.0.0/16:     Management
+# - 10.100.0.0/16:   Portals Dev
+# - 10.101.0.0/16:   Portals Prod
+# - 10.110-199.x.x:  Future workload landing zones
+# - 10.200.0.0/16:   Azure services
+#
+# Subnet Sizing:
+# - /24 subnets = 251 usable IPs (Azure reserves 5 IPs per subnet)
+# - /26 subnets = 59 usable IPs
+# - /27 subnets = 27 usable IPs
+#
+# Azure Reserved IPs per Subnet:
+# - x.x.x.0:   Network address
+# - x.x.x.1:   Default gateway
+# - x.x.x.2-3: DNS servers
+# - x.x.x.255: Broadcast address

@@ -34,6 +34,32 @@ output "networking_resource_group_name" {
   value       = var.create_virtual_network ? module.networking_resource_group[0].name : null
 }
 
+# New spoke VNet outputs
+output "portals_vnet_id" {
+  description = "The ID of the portals spoke virtual network"
+  value       = module.portals_vnet.resource_id
+}
+
+output "portals_vnet_name" {
+  description = "The name of the portals spoke virtual network"
+  value       = module.portals_vnet.name
+}
+
+output "portals_vnet_address_space" {
+  description = "The address space of the portals spoke virtual network"
+  value       = module.portals_vnet.address_space
+}
+
+output "portals_network_resource_group_name" {
+  description = "The name of the portals network resource group"
+  value       = azurerm_resource_group.network.name
+}
+
+output "portals_network_resource_group_id" {
+  description = "The ID of the portals network resource group"
+  value       = azurerm_resource_group.network.id
+}
+
 # Monitoring Outputs
 output "log_analytics_workspace_id" {
   description = "The resource ID of the Log Analytics workspace (if created)"

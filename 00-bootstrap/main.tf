@@ -82,7 +82,7 @@ module "resource_group" {
 
 module "storage_account" {
   source  = "Azure/avm-res-storage-storageaccount/azurerm"
-  version = "0.4.0"
+  version = "0.6.7"
 
   name                = "${module.naming.storage_account.name}${random_string.storage_suffix.result}"
   location            = var.location

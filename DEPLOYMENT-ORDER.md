@@ -21,17 +21,31 @@ This guide explains the correct sequence for deploying the Azure Landing Zone in
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ Step 2: Landing Zone Subscription Placement                │
-│ • Associate subscription with management group              │
-│ • Create shared Log Analytics workspace                    │
-│ • Inherit policies from management group hierarchy         │
+│ Step 2A: Landing Zone - Connectivity (Hub VNet)            │
+│ • Hub VNet (10.0.0.0/16)                                   │
+│ • Private DNS Zones (11 zones)                             │
+│ • Bastion, Firewall, Gateway subnets                       │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│ Step 2B: Landing Zones - Workload Networks (Spoke VNets)   │
+│ • Admin Dev VNet (10.100.0.0/16)                           │
+│ • Customer Dev VNet (10.110.0.0/16)                        │
+│ • Deploy in parallel for efficiency                        │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
+│ Step 2C: VNet Peering Configuration                        │
+│ • Hub ↔ Admin Dev peering                                  │
+│ • Hub ↔ Customer Dev peering                               │
+│ • Enable private DNS resolution                            │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ Step 3: Workload Deployment                                │
-│ • Deploy application resources                             │
-│ • Use AVM wrapper modules                                  │
-│ • Connect to shared monitoring                             │
+│ • Admin Portal Static Web App                              │
+│ • Customer Portal Static Web App                           │
+│ • Optional: Private endpoints for production               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -110,177 +124,429 @@ terraform output management_group_ids
 
 ---
 
-## Step 2: Place Subscription in Landing Zone
+## Step 2A: Deploy Connectivity Landing Zone (Hub VNet)
 
-**Directory**: `02-landing-zones/workloads/`
+**Directory**: `02-landing-zones/connectivity/`
 
-**Purpose**: Associates your subscription with the workloads landing zone management group and creates shared monitoring resources.
+**Purpose**: Creates the hub VNet with centralized networking services and private DNS zones.
 
 **Prerequisites**:
-- Step 1 completed
+- Step 1 (ALZ Foundation) completed
 
-**Configuration**:
-```bash
-cd ../02-landing-zones/workloads
-cp terraform.tfvars.example terraform.tfvars
-```
-
-Edit `terraform.tfvars`:
-```hcl
-subscription_id                    = "00000000-0000-0000-0000-000000000000" # Your subscription ID
-tenant_id                          = "00000000-0000-0000-0000-000000000000" # Your tenant ID
-workload_subscription_id           = "00000000-0000-0000-0000-000000000000" # Your subscription ID
-landing_zone_name                  = "web-apps"
-landing_zone_management_group_name = "acme-workloads"  # ← From Step 1
-create_log_analytics               = true
-```
+**Creates**:
+- Hub VNet (10.0.0.0/16) with 6 subnets:
+  - GatewaySubnet (10.0.0.0/27)
+  - AzureFirewallSubnet (10.0.1.0/26)
+  - AzureBastionSubnet (10.0.2.0/26)
+  - Shared Services (10.0.10.0/24)
+  - NVA (10.0.11.0/24)
+  - Management (10.0.12.0/24)
+- 11 Private DNS zones for Azure services (Static Web Apps, Storage, SQL, Cosmos DB, Key Vault, etc.)
+- Resource groups for network and private DNS
 
 **Commands**:
-```bash
-terraform init
-terraform plan
-terraform apply
+```powershell
+cd 02-landing-zones/connectivity
+terraform init -backend-config="key=tfstate-connectivity"
+terraform plan -var-file="terraform.tfvars"
+terraform apply -var-file="terraform.tfvars" -auto-approve
+```
+
+**Duration**: ~5-10 minutes (azapi provider can be slow)
+
+**Verify**:
+```powershell
+# Check hub VNet created
+terraform output vnet_id
+terraform output vnet_name
+
+# Check private DNS zones
+terraform output private_dns_zones
+
+# View in Azure Portal
+az network vnet show --name vnet-hub-prod-eus2 --resource-group acme-rg-connectivity-network-prod-eus2-{unique}
+az network private-dns zone list --resource-group acme-rg-connectivity-privatedns-prod-eus2-{unique} -o table
+```
+
+**Save These Values**:
+```powershell
+# You'll need these for VNet peering configuration
+terraform output -raw vnet_id
+terraform output -raw private_dns_resource_group_name
+```
+
+**Wait Time**: None - proceed immediately to Step 2B
+
+---
+
+## Step 2B: Deploy Workload Landing Zones (Spoke VNets)
+
+**Directories**: 
+- `02-landing-zones/workloads/portals-admin-dev/`
+- `02-landing-zones/workloads/portals-customer-dev/`
+
+**Purpose**: Creates spoke VNets for admin and customer portals with network isolation.
+
+**Prerequisites**:
+- Step 2A (Connectivity) completed
+
+**Creates**:
+
+**Admin Dev Spoke** (10.100.0.0/16):
+- Apps subnet (10.100.1.0/24)
+- Private Endpoints subnet (10.100.2.0/24)
+- VNet Integration subnet (10.100.3.0/24)
+- Data subnet (10.100.4.0/24)
+
+**Customer Dev Spoke** (10.110.0.0/16):
+- Apps subnet (10.110.1.0/24)
+- Private Endpoints subnet (10.110.2.0/24)
+- VNet Integration subnet (10.110.3.0/24)
+- Data subnet (10.110.4.0/24)
+
+**Commands** (Deploy in Parallel):
+```powershell
+# Terminal 1 - Admin Portal Network
+cd 02-landing-zones/workloads/portals-admin-dev
+terraform init -backend-config="key=tfstate-portals-admin-dev"
+Start-Job -Name "admin-network" -ScriptBlock {
+    Set-Location "c:\Code\ACME\emergent-azure-landing-zone\02-landing-zones\workloads\portals-admin-dev"
+    terraform apply -var-file="terraform.tfvars" -auto-approve
+}
+
+# Terminal 2 - Customer Portal Network
+cd ../portals-customer-dev
+terraform init -backend-config="key=tfstate-portals-customer-dev"
+Start-Job -Name "customer-network" -ScriptBlock {
+    Set-Location "c:\Code\ACME\emergent-azure-landing-zone\02-landing-zones\workloads\portals-customer-dev"
+    terraform apply -var-file="terraform.tfvars" -auto-approve
+}
+
+# Wait for both deployments to complete
+Get-Job | Wait-Job
+Get-Job | Receive-Job
+```
+
+**Duration**: ~5-10 minutes per VNet (run in parallel to save time)
+
+**Verify**:
+```powershell
+# Check admin VNet
+cd portals-admin-dev
+terraform output vnet_id
+terraform output subnet_ids
+
+# Check customer VNet
+cd ../portals-customer-dev
+terraform output vnet_id
+terraform output subnet_ids
+
+# View in Azure Portal
+az network vnet list --query "[?contains(name, 'portals')].{Name:name, ResourceGroup:resourceGroup, AddressSpace:addressSpace.addressPrefixes[0]}" -o table
+```
+
+**Wait Time**: None - proceed immediately to Step 2C
+
+---
+
+## Step 2C: Configure VNet Peering
+
+**Purpose**: Establish hub-and-spoke connectivity and enable private DNS resolution.
+
+**Prerequisites**:
+- Step 2A (Hub VNet) completed
+- Step 2B (Spoke VNets) completed
+
+**Peering Relationships Required**:
+1. Hub ↔ Admin Dev
+2. Hub ↔ Customer Dev
+
+**Option 1: Manual Configuration via Azure Portal**
+
+1. Navigate to Hub VNet → Peerings → Add
+2. Configure peering:
+   - Name: `hub-to-admin-dev`
+   - Remote VNet: Select admin dev VNet
+   - Enable: "Allow gateway transit" (from hub)
+   - Enable: "Allow forwarded traffic"
+3. Repeat for customer dev VNet
+
+**Option 2: Azure CLI**
+
+```powershell
+# Get VNet resource IDs
+$hubVNetId = (cd 02-landing-zones/connectivity; terraform output -raw vnet_id)
+$adminVNetId = (cd 02-landing-zones/workloads/portals-admin-dev; terraform output -raw vnet_id)
+$customerVNetId = (cd 02-landing-zones/workloads/portals-customer-dev; terraform output -raw vnet_id)
+
+# Get resource group names
+$hubRg = (cd 02-landing-zones/connectivity; terraform output -raw resource_group_name)
+$adminRg = (cd 02-landing-zones/workloads/portals-admin-dev; terraform output -raw resource_group_name)
+$customerRg = (cd 02-landing-zones/workloads/portals-customer-dev; terraform output -raw resource_group_name)
+
+# Create peering: Hub → Admin Dev
+az network vnet peering create `
+  --name hub-to-admin-dev `
+  --resource-group $hubRg `
+  --vnet-name vnet-hub-prod-eus2 `
+  --remote-vnet $adminVNetId `
+  --allow-forwarded-traffic `
+  --allow-gateway-transit
+
+# Create peering: Admin Dev → Hub
+az network vnet peering create `
+  --name admin-dev-to-hub `
+  --resource-group $adminRg `
+  --vnet-name vnet-portals-admin-dev-eus2 `
+  --remote-vnet $hubVNetId `
+  --allow-forwarded-traffic `
+  --use-remote-gateways false
+
+# Create peering: Hub → Customer Dev
+az network vnet peering create `
+  --name hub-to-customer-dev `
+  --resource-group $hubRg `
+  --vnet-name vnet-hub-prod-eus2 `
+  --remote-vnet $customerVNetId `
+  --allow-forwarded-traffic `
+  --allow-gateway-transit
+
+# Create peering: Customer Dev → Hub
+az network vnet peering create `
+  --name customer-dev-to-hub `
+  --resource-group $customerRg `
+  --vnet-name vnet-portals-customer-dev-eus2 `
+  --remote-vnet $hubVNetId `
+  --allow-forwarded-traffic `
+  --use-remote-gateways false
 ```
 
 **Duration**: ~2-3 minutes
 
 **Verify**:
-```bash
-# Get Log Analytics workspace ID (you'll need this for workloads)
-terraform output -raw log_analytics_workspace_resource_id
+```powershell
+# Check peering status (should be "Connected")
+az network vnet peering list --resource-group $hubRg --vnet-name vnet-hub-prod-eus2 -o table
+az network vnet peering list --resource-group $adminRg --vnet-name vnet-portals-admin-dev-eus2 -o table
+az network vnet peering list --resource-group $customerRg --vnet-name vnet-portals-customer-dev-eus2 -o table
 
-# Check subscription placement
-az account management-group show --name acme-workloads --expand
+# Test private DNS resolution from a VM in spoke VNet
+# nslookup privatelink.azurestaticapps.net
+# Should resolve via hub's private DNS zone
 ```
 
-**Save This Value**:
-```bash
-# Copy the Log Analytics workspace ID
-terraform output -raw log_analytics_workspace_resource_id > ../03-workloads/web-app/.log-analytics-id
-```
-
-**Wait Time**: 2-5 minutes for policy assignments to propagate
+**Wait Time**: 2-5 minutes for peering to establish connectivity
 
 ---
 
 ## Step 3: Deploy Workloads
 
-**Directory**: `03-workloads/web-app/`
+**Directories**: 
+- `03-workloads/portals/admin-portal/`
+- `03-workloads/portals/customer-portal/`
 
-**Purpose**: Deploys application resources into the landing zone.
+**Purpose**: Deploys Azure Static Web Apps for admin and customer portals.
 
 **Prerequisites**:
-- Step 1 completed
-- Step 2 completed
-- Log Analytics workspace ID from Step 2
+- Step 2A, 2B, 2C completed
+- VNet peering established (for private DNS resolution)
+
+**Subscriptions**:
+- Admin Portal Dev: 588aa873-b13e-40bc-a96f-89805c56d7d0
+- Customer Portal Dev: 9a877ddf-9796-43a8-a557-f6af1df195bf
 
 **Configuration**:
-```bash
-cd ../03-workloads/web-app
-cp terraform.tfvars.example terraform.tfvars
+
+Admin portal `dev.tfvars`:
+```hcl
+environment     = "dev"
+subscription_id = "588aa873-b13e-40bc-a96f-89805c56d7d0"
+location        = "eastus2"
+
+# For production with private endpoint:
+# enable_private_endpoint = true
+# private_endpoint_subnet_id = "<from-landing-zone-output>"
 ```
 
-Edit `terraform.tfvars`:
+Customer portal `dev.tfvars`:
 ```hcl
-subscription_id = "00000000-0000-0000-0000-000000000000" # Your subscription ID
+environment     = "dev"
+subscription_id = "9a877ddf-9796-43a8-a557-f6af1df195bf"
+location        = "eastus2"
 
-workload_name = "demo-web"
-environment   = "dev"
-location      = "eastus"
-
-# From 02-landing-zones output (Step 2)
-log_analytics_workspace_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-corp-web-apps-monitoring-eastus/providers/Microsoft.OperationalInsights/workspaces/log-corp-web-apps-eastus"
-
-app_service_os_type = "Linux"
-app_service_sku_name = "B1"
-
-enable_application_insights = true
-enable_managed_identity = true
+# For production with private endpoint:
+# enable_private_endpoint = true
+# private_endpoint_subnet_id = "<from-landing-zone-output>"
 ```
 
 **Commands**:
-```bash
-terraform init
-terraform plan
-terraform apply
+```powershell
+# Deploy admin portal
+cd 03-workloads/portals/admin-portal
+terraform init -backend-config="key=tfstate-admin-portal-dev"
+terraform apply -var-file="dev.tfvars" -auto-approve
+
+# Deploy customer portal
+cd ../customer-portal
+terraform init -backend-config="key=tfstate-customer-portal-dev"
+terraform apply -var-file="dev.tfvars" -auto-approve
 ```
 
-**Duration**: ~3-5 minutes
+**Duration**: ~3-5 minutes per Static Web App
 
 **Verify**:
-```bash
-# Get web app URL
-terraform output -raw web_app_default_hostname
+```powershell
+# Check Static Web Apps created
+az staticwebapp list --query "[].{Name:name, ResourceGroup:resourceGroup, Hostname:defaultHostname, SKU:sku.name}" -o table
 
-# Test the app
-curl https://$(terraform output -raw web_app_default_hostname)
+# Get deployment tokens (for CI/CD)
+cd admin-portal
+terraform output -raw static_web_app_api_key
+
+cd ../customer-portal
+terraform output -raw static_web_app_api_key
+
+# Test URLs
+$adminUrl = (cd admin-portal; terraform output -raw static_web_app_default_hostname)
+$customerUrl = (cd customer-portal; terraform output -raw static_web_app_default_hostname)
+Write-Host "Admin Portal: https://$adminUrl"
+Write-Host "Customer Portal: https://$customerUrl"
+```
+
+**Wait Time**: None - workloads are deployed
+
+---
+
+## Post-Deployment Steps
+
+### 1. Configure CI/CD Pipelines
+
+Use the Static Web App deployment tokens for GitHub Actions or Azure DevOps:
+
+```yaml
+# .github/workflows/deploy-admin-portal.yml
+name: Deploy Admin Portal
+on: [push]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.ADMIN_PORTAL_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "/admin-portal"
+```
+
+### 2. Add Private Endpoints (Production)
+
+For production deployments:
+
+1. Update `prod.tfvars`:
+   ```hcl
+   static_web_app_sku = "Standard"
+   enable_private_endpoint = true
+   private_endpoint_subnet_id = "<from-landing-zone>"
+   ```
+
+2. Deploy production:
+   ```powershell
+   terraform init -backend-config="key=tfstate-admin-portal-prod" -reconfigure
+   terraform apply -var-file="prod.tfvars"
+   ```
+
+### 3. Monitor Resources
+
+```powershell
+# View activity logs
+az monitor activity-log list --resource-group <rg-name> --offset 1h
+
+# Check policy compliance
+az policy state list --resource <resource-id>
+
+# Monitor network traffic (if Firewall deployed)
+az monitor diagnostic-settings list --resource <firewall-id>
 ```
 
 ---
 
-## Complete Deployment Script
+## Troubleshooting
 
-Save this as `deploy-all.sh`:
+### VNet Peering Not Connected
 
-```bash
-#!/bin/bash
-set -e
+```powershell
+# Check peering status
+az network vnet peering show --name hub-to-admin-dev --resource-group <hub-rg> --vnet-name vnet-hub-prod-eus2
 
-echo "========================================="
-echo "Azure Landing Zone - Complete Deployment"
-echo "========================================="
+# Common issues:
+# - Overlapping address spaces (check IPAM)
+# - Insufficient permissions
+# - VNet in failed state
+```
 
-# Step 1: ALZ Foundation
-echo ""
-echo "Step 1/3: Deploying ALZ Foundation..."
-cd alz-foundation
-terraform init
-terraform apply -auto-approve
-echo "✓ ALZ Foundation deployed"
+### Private DNS Not Resolving
 
-# Step 2: Landing Zone
-echo ""
-echo "Step 2/3: Placing subscription in landing zone..."
-cd ../02-landing-zones/workloads
-if [ ! -f terraform.tfvars ]; then
-  cp terraform.tfvars.example terraform.tfvars
-  echo "⚠ Please edit 02-landing-zones/workloads/terraform.tfvars and run this script again"
-  exit 1
-fi
-terraform init
-terraform apply -auto-approve
-LOG_ANALYTICS_ID=$(terraform output -raw log_analytics_workspace_resource_id)
-echo "✓ Landing zone configured"
-echo "✓ Log Analytics Workspace: $LOG_ANALYTICS_ID"
+```powershell
+# Check VNet link to private DNS zone
+az network private-dns link vnet list --zone-name privatelink.azurestaticapps.net --resource-group <connectivity-privatedns-rg> -o table
 
-# Wait for policies to propagate
-echo ""
-echo "Waiting 60 seconds for policies to propagate..."
-sleep 60
+# Verify peering allows DNS forwarding
+az network vnet peering list --resource-group <hub-rg> --vnet-name vnet-hub-prod-eus2 --query "[].{Name:name, AllowForwardedTraffic:allowForwardedTraffic}"
+```
 
-# Step 3: Workload
-echo ""
-echo "Step 3/3: Deploying workload..."
-cd ../03-workloads/web-app
-if [ ! -f terraform.tfvars ]; then
-  cp terraform.tfvars.example terraform.tfvars
-  # Inject Log Analytics workspace ID
-  echo "log_analytics_workspace_id = \"$LOG_ANALYTICS_ID\"" >> terraform.tfvars
-fi
-terraform init
-terraform apply -auto-approve
-WEB_APP_URL=$(terraform output -raw web_app_default_hostname)
-echo "✓ Workload deployed"
+### Deployment Timeouts
 
-echo ""
-echo "========================================="
-echo "Deployment Complete!"
-echo "========================================="
-echo "Web App URL: https://$WEB_APP_URL"
-echo ""
-echo "Next steps:"
-echo "1. Visit https://$WEB_APP_URL to see your app"
-echo "2. Check Azure Portal → Management Groups to see hierarchy"
+```powershell
+# azapi provider can be slow for VNet creation (3-10 minutes)
+# Check deployment status
+terraform show
+
+# If stuck, check Azure activity log
+az monitor activity-log list --resource-group <rg-name> --offset 30m
+```
+
+### Policy Violations
+
+```powershell
+# Check policy compliance
+az policy state list --resource-group <rg-name>
+
+# Common issues:
+# - Missing required tags
+# - Disallowed location
+# - Public IP not allowed
+
+# Remediate or request policy exemption
+```
+
+---
+
+## Summary
+
+**Total Deployment Time**: ~20-30 minutes
+
+1. **Bootstrap** (one-time): ~3 minutes
+2. **ALZ Foundation**: ~10 minutes
+3. **Connectivity Hub**: ~10 minutes
+4. **Spoke VNets** (parallel): ~10 minutes
+5. **VNet Peering**: ~3 minutes
+6. **Workloads**: ~5 minutes per app
+
+**Network Architecture Deployed**:
+- Hub VNet (10.0.0.0/16) with 6 subnets
+- 11 Private DNS zones
+- Admin Dev Spoke (10.100.0.0/16) with 4 subnets
+- Customer Dev Spoke (10.110.0.0/16) with 4 subnets
+- Hub-and-spoke peering relationships
+
+**Next Steps**:
+- Deploy frontend code to Static Web Apps
+- Configure custom domains
+- Add private endpoints for production
+- Deploy production networks (portals-admin-prod, portals-customer-prod)
+- Add monitoring and alerting
 echo "3. Check Azure Portal → Policy to see compliance status"
 ```
 

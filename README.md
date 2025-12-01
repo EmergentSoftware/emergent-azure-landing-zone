@@ -131,73 +131,87 @@ Before you begin, ensure you have:
 ### 1. Clone or Download This Repository
 
 ```powershell
-git clone https://github.com/yourorg/acme-avm-alz-demo.git
-cd acme-avm-alz-demo
+git clone https://github.com/yourorg/emergent-azure-landing-zone.git
+cd emergent-azure-landing-zone
 ```
 
-### 2. Configure Variables
-
-Copy the example variables file and customize it:
+### 2. Bootstrap - Terraform State Storage (One-Time)
 
 ```powershell
-Copy-Item terraform.tfvars.example terraform.tfvars
-```
-
-Edit `terraform.tfvars` with your values:
-
-```hcl
-default_location = "eastus"
-security_contact_email = "security@acme.com"
-allowed_locations = [
-  "eastus",
-  "eastus2",
-  "centralus",
-  "westus2"
-]
-```
-
-### 3. Initialize Terraform
-
-```powershell
+cd 00-bootstrap
 terraform init
+terraform apply -auto-approve
+cd ..
 ```
 
-This will:
-- Download the AVM module
-- Download the ALZ provider
-- Initialize the backend
+This creates the Azure Storage account for remote Terraform state.
 
-### 4. Review the Plan
+### 3. Foundation - Management Groups & Policies
 
 ```powershell
-terraform plan -out=tfplan
+cd 01-alz-foundation
+terraform init
+terraform apply -auto-approve
+cd ..
 ```
 
-Review the planned changes. This will create:
-- Management groups (Platform, Landing Zones, etc.)
-- Policy definitions
-- Policy assignments
-- Policy role assignments
+This deploys the Azure Landing Zone management group hierarchy and governance policies.
 
-### 5. Apply the Configuration
+### 4. Landing Zones - Network Infrastructure
 
 ```powershell
-terraform apply tfplan
+# Deploy hub VNet with private DNS zones
+cd 02-landing-zones/connectivity
+terraform init -backend-config="key=tfstate-connectivity"
+terraform apply -var-file="terraform.tfvars" -auto-approve
+
+# Deploy portal spoke VNets in parallel
+cd ../workloads/portals-admin-dev
+terraform init -backend-config="key=tfstate-portals-admin-dev"
+Start-Job { Set-Location $using:PWD; terraform apply -var-file="terraform.tfvars" -auto-approve }
+
+cd ../portals-customer-dev
+terraform init -backend-config="key=tfstate-portals-customer-dev"
+Start-Job { Set-Location $using:PWD; terraform apply -var-file="terraform.tfvars" -auto-approve }
+
+# Wait for parallel jobs
+Get-Job | Wait-Job
+Get-Job | Receive-Job
+cd ../../..
 ```
 
-⏱️ **Deployment Time**: 10-15 minutes
+### 5. Workloads - Application Deployments
+
+```powershell
+# Deploy admin portal Static Web App
+cd 03-workloads/portals/admin-portal
+terraform init -backend-config="key=tfstate-admin-portal-dev"
+terraform apply -var-file="dev.tfvars" -auto-approve
+
+# Deploy customer portal Static Web App
+cd ../customer-portal
+terraform init -backend-config="key=tfstate-customer-portal-dev"
+terraform apply -var-file="dev.tfvars" -auto-approve
+cd ../../..
+```
 
 ### 6. Verify Deployment
 
-Check the management groups in Azure Portal:
-
 ```powershell
-# List management groups
+# Check management groups
 az account management-group list --output table
 
-# View specific management group
-az account management-group show --name alz -e -r
+# Check network infrastructure
+az network vnet list --query "[].{Name:name, ResourceGroup:resourceGroup, AddressSpace:addressSpace.addressPrefixes[0]}" -o table
+
+# Check private DNS zones
+az network private-dns zone list --resource-group $(az group list --query "[?contains(name, 'privatedns')].name" -o tsv) -o table
+
+# Check Static Web Apps
+az staticwebapp list --query "[].{Name:name, ResourceGroup:resourceGroup, DefaultHostname:defaultHostname}" -o table
 ```
+
+> **Note**: See [DEPLOYMENT-ORDER.md](DEPLOYMENT-ORDER.md) for detailed step-by-step deployment instructions including VNet peering configuration.
 
 ## 📁 Project Structure
 
@@ -264,26 +278,53 @@ emergent-azure-landing-zone/
 
 ### 1. Management Group Hierarchy
 
-The module automatically creates a CAF-aligned hierarchy:
+Azure Landing Zone management groups aligned with Cloud Adoption Framework:
 
-- **Platform**: For shared platform services
-  - Management: Centralized logging and monitoring
-  - Connectivity: Hub networking and connectivity
-  - Identity: Identity and access management
+- **Platform**: Shared platform services
+  - Connectivity: Hub networking, private DNS zones, network security
+  - Management: Centralized logging and monitoring (planned)
+  - Identity: Identity and access management (planned)
 - **Workloads**: For all application workloads
-- **Sandbox**: For experimentation and testing
-- **Decommissioned**: For resources being retired
+- **Sandbox**: Experimentation and testing (planned)
+- **Decommissioned**: Resources being retired (planned)
 
-### 2. Policy Governance
+### 2. Network Architecture
 
-Baseline policies are automatically deployed:
+Hub-and-spoke topology with centralized private DNS:
+
+- **Hub VNet (10.0.0.0/16)**: Centralized connectivity with Gateway, Firewall, Bastion
+- **Private DNS Zones**: 11 zones for Azure Private Link services (Static Web Apps, Storage, SQL, Cosmos DB, Key Vault, etc.)
+- **Spoke VNets**: Isolated networks per workload subscription
+  - Admin Portal Dev (10.100.0.0/16): Admin-facing applications
+  - Customer Portal Dev (10.110.0.0/16): Customer-facing applications
+- **IPAM**: Programmatic IP allocation via `ipam.yaml`
+
+### 3. Policy Governance
+
+Baseline Azure policies deployed via ALZ module:
 
 - **Security**: Deny public IP addresses, require encryption
 - **Compliance**: Allowed locations, required tags
-- **Monitoring**: Enable Azure Monitor, diagnostic settings
-- **Networking**: NSG rules, Azure Firewall policies
+- **Monitoring**: Enable Azure Monitor, diagnostic settings (planned)
+- **Networking**: NSG rules, Azure Firewall policies (planned)
 
-### 3. Policy Customization
+### 4. Reusable Modules
+
+Azure Verified Modules (AVM) wrappers for consistency:
+
+- **Resource Groups**: Standardized naming and tagging
+- **Virtual Networks**: Hub-and-spoke patterns with subnets
+- **Static Web Apps**: Free tier with optional private endpoints
+- **Log Analytics**: Centralized logging (planned)
+- **Naming Convention**: Consistent Azure resource naming
+
+### 5. Infrastructure as Code Best Practices
+
+- **Remote State**: Azure Storage backend for team collaboration
+- **Layered Deployment**: Bootstrap → Foundation → Landing Zones → Workloads
+- **Modular Design**: Shared modules for reusability
+- **IPAM**: Centralized IP address management
+- **Parallel Deployments**: Concurrent spoke VNet deployments for speed
 
 The configuration demonstrates how to modify policies:
 

@@ -1,6 +1,6 @@
-# Portal Workload using Azure Verified Modules
+# Admin Portal Workload - Azure Static Web App
 
-This workload demonstrates deploying a production-ready customer portal using Azure Verified Modules (AVM) that complies with Azure Landing Zone policies.
+This workload deploys the admin-facing portal as an Azure Static Web App with network isolation and private endpoint support.
 
 ## Multi-Environment Support
 
@@ -8,45 +8,230 @@ This workload supports multiple environments (dev, prod) using:
 - **Separate tfvars files**: `dev.tfvars`, `prod.tfvars`
 - **Environment-specific state files**: Different state keys per environment
 - **Different subscriptions**: Each environment deploys to its own subscription
-- **Environment-aware configuration**: Auto-adjusts SKUs, settings based on environment
+- **Network isolation**: Dedicated VNet per environment
 
 ## Architecture
 
 Resources created per environment:
 
 ```
-Resource Group (acme-rg-portal-{env}-{region}-{unique})
-├── App Service Plan (acme-asp-portal-{env}-{region}-{unique})
-│   └── SKU: B1 (dev) | P1v3 (prod)
-├── Web App (acme-app-portal-{env}-{region}-{unique})
+Resource Group (acme-rg-portals-admin-app-{env}-{region}-{unique})
+├── Static Web App (acme-swa-admin-{env}-{region}-{unique})
+│   ├── SKU: Free (dev) | Standard (prod with private endpoint)
 │   ├── System-assigned Managed Identity
-│   ├── HTTPS enforced, TLS 1.2+
-│   └── Diagnostic Settings → Log Analytics
-└── Application Insights (acme-appi-portal-{env}-{region}-{unique})
+│   └── Tags: Environment, Purpose, Workload
+│
+└── (Optional) Private Endpoint
+    ├── Connects to: Admin Dev VNet (10.100.0.0/16)
+    ├── Subnet: Private Endpoints (10.100.2.0/24)
+    └── Private DNS: privatelink.azurestaticapps.net (in connectivity)
 ```
 
 ## Prerequisites
 
-1. **Landing Zone**: `02-landing-zones/workloads/portals-dev` deployed
-2. **Log Analytics**: Created by landing zone
+### Infrastructure Dependencies
+
+1. **Landing Zone Network**: `02-landing-zones/workloads/portals-admin-dev` deployed
+   - Admin Dev VNet: 10.100.0.0/16
+   - Private Endpoints Subnet: 10.100.2.0/24
+   - VNet Integration Subnet: 10.100.3.0/24
+
+2. **Connectivity Hub**: `02-landing-zones/connectivity` deployed
+   - Hub VNet: 10.0.0.0/16
+   - Private DNS Zone: `privatelink.azurestaticapps.net`
+   - VNet Peering: hub ↔ admin-dev spoke (required for private DNS resolution)
+
 3. **Terraform**: >= 1.12.0
-4. **Subscription**: portals-dev (9a877ddf-9796-43a8-a557-f6af1df195bf)
+4. **Subscription**: portals-admin-dev (588aa873-b13e-40bc-a96f-89805c56d7d0)
+
+### Network Configuration
+
+Before deploying, ensure VNet peering is configured between hub and admin-dev spoke:
+
+```powershell
+# Verify peering
+az network vnet peering list --resource-group <hub-rg> --vnet-name vnet-hub-prod-eus2 -o table
+```
 
 ## Quick Start - Development
 
-### 1. Get Log Analytics Workspace ID
+### 1. Get Network Information (if using private endpoint)
 
-```bash
-cd ../../02-landing-zones/workloads/portals-dev
-terraform output -raw log_analytics_workspace_resource_id
+### 1. Get Network Information (if using private endpoint)
+
+```powershell
+# Get VNet and subnet IDs from landing zone
+cd ../../02-landing-zones/workloads/portals-admin-dev
+terraform output vnet_id
+terraform output subnet_ids
+
+# Get private DNS zone ID from connectivity
+cd ../../connectivity
+terraform output private_dns_zones
 ```
 
-Copy the output and update `dev.tfvars`:
+Update `dev.tfvars` with the subnet ID for private endpoints:
 ```hcl
-log_analytics_workspace_id = "/subscriptions/.../workspaces/acme-log-portals-dev-eus-xxxx"
+private_endpoint_subnet_id = "/subscriptions/588aa873-b13e-40bc-a96f-89805c56d7d0/resourceGroups/.../subnets/acme-snet-admin-privateendpoints-dev-eus2"
 ```
 
 ### 2. Initialize Terraform
+
+```powershell
+cd ../../../03-workloads/portals/admin-portal
+terraform init -backend-config="key=tfstate-admin-portal-dev"
+```
+
+### 3. Deploy Development Environment
+
+```powershell
+terraform apply -var-file="dev.tfvars" -auto-approve
+```
+
+### 4. Get Static Web App Details
+
+```powershell
+# Get deployment token for GitHub Actions
+terraform output -raw static_web_app_api_key
+
+# Get default hostname
+terraform output -raw static_web_app_default_hostname
+```
+
+## Network Integration
+
+### Private Endpoint (Production Only)
+
+For production deployments with Standard SKU Static Web App:
+
+1. **Enable Private Endpoint** in `prod.tfvars`:
+   ```hcl
+   enable_private_endpoint = true
+   private_endpoint_subnet_id = "<subnet-id-from-landing-zone>"
+   ```
+
+2. **Verify Private DNS Resolution**:
+   ```powershell
+   # From a VM in the admin VNet
+   nslookup <your-swa-name>.azurestaticapps.net
+   # Should resolve to private IP 10.100.2.x
+   ```
+
+### VNet Integration (Optional)
+
+If the Static Web App needs to call backend APIs in the admin VNet:
+
+1. Add VNet integration subnet ID to `tfvars`
+2. Configure managed VNet integration in Static Web App configuration
+3. Update NSG rules to allow outbound traffic from VNet Integration subnet
+
+## Security Considerations
+
+### Network Isolation
+
+- **Admin Dev**: Uses dedicated VNet (10.100.0.0/16) isolated from customer portal
+- **Private Endpoints**: Keeps traffic within Azure backbone (production only)
+- **No Public Access**: When private endpoint enabled, public access should be disabled
+
+### Identity and Access
+
+- **Managed Identity**: System-assigned identity for Azure resource access
+- **RBAC**: Grant minimal permissions to managed identity for backend resources
+- **API Key Rotation**: Rotate Static Web App deployment tokens regularly
+
+### Compliance
+
+- **Tags**: All resources tagged with Environment, Purpose, Workload for governance
+- **ALZ Policies**: Complies with Azure Landing Zone security and compliance policies
+- **Encryption**: Data encrypted in transit (HTTPS) and at rest (Azure Storage)
+
+## Deployment to Production
+
+### 1. Update prod.tfvars
+
+```hcl
+environment         = "prod"
+subscription_id     = "95d02110-3796-4dc6-af3b-f4759cda0d2f"  # Admin-prod subscription
+static_web_app_sku  = "Standard"
+enable_private_endpoint = true
+private_endpoint_subnet_id = "<subnet-from-portals-admin-prod-landing-zone>"
+```
+
+### 2. Deploy to Production Subscription
+
+```powershell
+# Initialize with production state key
+terraform init -backend-config="key=tfstate-admin-portal-prod" -reconfigure
+
+# Deploy to production
+terraform apply -var-file="prod.tfvars"
+```
+
+## Verification
+
+### Check Deployment
+
+```powershell
+# List Static Web Apps
+az staticwebapp list --query "[?contains(name, 'admin')].{Name:name, ResourceGroup:resourceGroup, Hostname:defaultHostname, SKU:sku.name}" -o table
+
+# Check private endpoint (if enabled)
+az network private-endpoint list --query "[?contains(name, 'admin')].{Name:name, ResourceGroup:resourceGroup, PrivateIP:customDnsConfigs[0].ipAddresses[0]}" -o table
+
+# Check private DNS records
+az network private-dns record-set a list --zone-name privatelink.azurestaticapps.net --resource-group <connectivity-privatedns-rg> -o table
+```
+
+### Test Application
+
+```powershell
+# Get the Static Web App URL
+$hostname = terraform output -raw static_web_app_default_hostname
+Write-Host "Admin Portal: https://$hostname"
+
+# Test from Azure (if private endpoint enabled)
+# curl https://$hostname from a VM in the admin VNet
+```
+
+## Next Steps
+
+1. **Configure CI/CD**: Use the deployment token with GitHub Actions or Azure DevOps
+2. **Deploy Application**: Push your admin portal frontend code to trigger deployment
+3. **Backend Integration**: Configure managed identity for backend API access
+4. **Custom Domain**: Add custom domain and SSL certificate
+5. **Monitoring**: Configure Application Insights for performance monitoring
+
+## Troubleshooting
+
+### Private Endpoint Not Resolving
+
+```powershell
+# Verify VNet peering
+az network vnet peering show --resource-group <hub-rg> --vnet-name vnet-hub-prod-eus2 --name hub-to-admin-dev
+
+# Verify private DNS zone VNet link
+az network private-dns link vnet list --zone-name privatelink.azurestaticapps.net --resource-group <connectivity-privatedns-rg> -o table
+```
+
+### Deployment Fails
+
+```powershell
+# Check Terraform state
+terraform state list
+
+# Validate configuration
+terraform validate
+
+# Check Azure activity log
+az monitor activity-log list --resource-group <rg-name> --offset 1h
+```
+
+## Related Documentation
+
+- [02-landing-zones/workloads/portals-admin-dev/README.md](../../02-landing-zones/workloads/portals-admin-dev/README.md) - Network landing zone
+- [02-landing-zones/connectivity/README.md](../../02-landing-zones/connectivity/README.md) - Hub VNet and private DNS
+- [Azure Static Web Apps Documentation](https://learn.microsoft.com/azure/static-web-apps/)
+- [Private Endpoints Documentation](https://learn.microsoft.com/azure/private-link/private-endpoint-overview)
 
 ```bash
 cd ../../../03-workloads/portals

@@ -10,13 +10,6 @@ locals {
   hub  = local.ipam.connectivity.hub
 }
 
-# Naming module for consistent resource naming
-module "naming" {
-  source   = "../../shared-modules/naming"
-  location = local.hub.location
-  suffix   = ["hub", "prod"]
-}
-
 # Generate random suffix for unique naming
 resource "random_string" "suffix" {
   length  = 4
@@ -34,6 +27,110 @@ module "network_resource_group" {
     var.tags,
     {
       Purpose = "Hub Network Infrastructure"
+    }
+  )
+}
+
+# Network Security Groups for Hub Subnets
+# Note: GatewaySubnet, AzureFirewallSubnet, and AzureBastionSubnet typically don't use NSGs
+# Adding NSGs only for the regular subnets
+
+module "nsg_shared_services" {
+  source = "../../shared-modules/network-security-group"
+
+  name                = "nsg-${local.hub.subnets[3].name}"
+  location            = local.hub.location
+  resource_group_name = module.network_resource_group.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "Shared Services Subnet NSG"
+      Environment = "Production"
+    }
+  )
+}
+
+module "nsg_nva" {
+  source = "../../shared-modules/network-security-group"
+
+  name                = "nsg-${local.hub.subnets[4].name}"
+  location            = local.hub.location
+  resource_group_name = module.network_resource_group.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "NVA Subnet NSG"
+      Environment = "Production"
+    }
+  )
+}
+
+module "nsg_management" {
+  source = "../../shared-modules/network-security-group"
+
+  name                = "nsg-${local.hub.subnets[5].name}"
+  location            = local.hub.location
+  resource_group_name = module.network_resource_group.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "Management Subnet NSG"
+      Environment = "Production"
+    }
+  )
+}
+
+# Route Tables for Hub Subnets
+# Note: GatewaySubnet, AzureFirewallSubnet, and AzureBastionSubnet typically don't use route tables
+# Adding route tables for regular subnets
+
+module "rt_shared_services" {
+  source = "../../shared-modules/route-table"
+
+  name                = "rt-${local.hub.subnets[3].name}"
+  location            = local.hub.location
+  resource_group_name = module.network_resource_group.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "Shared Services Subnet Route Table"
+      Environment = "Production"
+    }
+  )
+}
+
+module "rt_nva" {
+  source = "../../shared-modules/route-table"
+
+  name                = "rt-${local.hub.subnets[4].name}"
+  location            = local.hub.location
+  resource_group_name = module.network_resource_group.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "NVA Subnet Route Table"
+      Environment = "Production"
+    }
+  )
+}
+
+module "rt_management" {
+  source = "../../shared-modules/route-table"
+
+  name                = "rt-${local.hub.subnets[5].name}"
+  location            = local.hub.location
+  resource_group_name = module.network_resource_group.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "Management Subnet Route Table"
+      Environment = "Production"
     }
   )
 }
@@ -73,8 +170,10 @@ module "hub_vnet" {
 
     # Shared Services
     "${local.hub.subnets[3].name}" = {
-      name             = local.hub.subnets[3].name
-      address_prefixes = [local.hub.subnets[3].address_prefix]
+      name                               = local.hub.subnets[3].name
+      address_prefixes                   = [local.hub.subnets[3].address_prefix]
+      network_security_group_resource_id = module.nsg_shared_services.id
+      route_table_resource_id            = module.rt_shared_services.id
       service_endpoints_with_location = [
         for endpoint in local.hub.subnets[3].service_endpoints : {
           service   = endpoint
@@ -85,14 +184,18 @@ module "hub_vnet" {
 
     # Network Virtual Appliances
     "${local.hub.subnets[4].name}" = {
-      name             = local.hub.subnets[4].name
-      address_prefixes = [local.hub.subnets[4].address_prefix]
+      name                               = local.hub.subnets[4].name
+      address_prefixes                   = [local.hub.subnets[4].address_prefix]
+      network_security_group_resource_id = module.nsg_nva.id
+      route_table_resource_id            = module.rt_nva.id
     }
 
     # Management and Monitoring
     "${local.hub.subnets[5].name}" = {
-      name             = local.hub.subnets[5].name
-      address_prefixes = [local.hub.subnets[5].address_prefix]
+      name                               = local.hub.subnets[5].name
+      address_prefixes                   = [local.hub.subnets[5].address_prefix]
+      network_security_group_resource_id = module.nsg_management.id
+      route_table_resource_id            = module.rt_management.id
       service_endpoints_with_location = [
         for endpoint in local.hub.subnets[5].service_endpoints : {
           service   = endpoint
@@ -110,6 +213,5 @@ module "hub_vnet" {
       IPAM        = "Managed via 02-landing-zones/ipam.yaml"
     }
   )
-
   depends_on = [module.network_resource_group]
 }

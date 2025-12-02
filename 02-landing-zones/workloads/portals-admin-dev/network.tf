@@ -26,6 +26,144 @@ resource "azurerm_resource_group" "network" {
   )
 }
 
+# Network Security Groups for Subnets
+module "nsg_app_subnet" {
+  source = "../../../shared-modules/network-security-group"
+
+  name                = "nsg-${local.portals_admin_dev.subnets[0].name}"
+  location            = local.portals_admin_dev.location
+  resource_group_name = azurerm_resource_group.network.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "Application Subnet NSG"
+      Application = "Admin Portal"
+      Environment = "Development"
+    }
+  )
+}
+
+module "nsg_private_endpoints_subnet" {
+  source = "../../../shared-modules/network-security-group"
+
+  name                = "nsg-${local.portals_admin_dev.subnets[1].name}"
+  location            = local.portals_admin_dev.location
+  resource_group_name = azurerm_resource_group.network.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "Private Endpoints Subnet NSG"
+      Application = "Admin Portal"
+      Environment = "Development"
+    }
+  )
+}
+
+module "nsg_vnet_integration_subnet" {
+  source = "../../../shared-modules/network-security-group"
+
+  name                = "nsg-${local.portals_admin_dev.subnets[2].name}"
+  location            = local.portals_admin_dev.location
+  resource_group_name = azurerm_resource_group.network.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "VNet Integration Subnet NSG"
+      Application = "Admin Portal"
+      Environment = "Development"
+    }
+  )
+}
+
+module "nsg_data_services_subnet" {
+  source = "../../../shared-modules/network-security-group"
+
+  name                = "nsg-${local.portals_admin_dev.subnets[3].name}"
+  location            = local.portals_admin_dev.location
+  resource_group_name = azurerm_resource_group.network.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "Data Services Subnet NSG"
+      Application = "Admin Portal"
+      Environment = "Development"
+    }
+  )
+}
+
+# Route Tables for Subnets
+module "rt_app_subnet" {
+  source = "../../../shared-modules/route-table"
+
+  name                = "rt-${local.portals_admin_dev.subnets[0].name}"
+  location            = local.portals_admin_dev.location
+  resource_group_name = azurerm_resource_group.network.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "Application Subnet Route Table"
+      Application = "Admin Portal"
+      Environment = "Development"
+    }
+  )
+}
+
+module "rt_private_endpoints_subnet" {
+  source = "../../../shared-modules/route-table"
+
+  name                = "rt-${local.portals_admin_dev.subnets[1].name}"
+  location            = local.portals_admin_dev.location
+  resource_group_name = azurerm_resource_group.network.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "Private Endpoints Subnet Route Table"
+      Application = "Admin Portal"
+      Environment = "Development"
+    }
+  )
+}
+
+module "rt_vnet_integration_subnet" {
+  source = "../../../shared-modules/route-table"
+
+  name                = "rt-${local.portals_admin_dev.subnets[2].name}"
+  location            = local.portals_admin_dev.location
+  resource_group_name = azurerm_resource_group.network.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "VNet Integration Subnet Route Table"
+      Application = "Admin Portal"
+      Environment = "Development"
+    }
+  )
+}
+
+module "rt_data_services_subnet" {
+  source = "../../../shared-modules/route-table"
+
+  name                = "rt-${local.portals_admin_dev.subnets[3].name}"
+  location            = local.portals_admin_dev.location
+  resource_group_name = azurerm_resource_group.network.name
+
+  tags = merge(
+    var.tags,
+    {
+      Purpose     = "Data Services Subnet Route Table"
+      Application = "Admin Portal"
+      Environment = "Development"
+    }
+  )
+}
+
 # Portals Admin Dev Virtual Network
 module "portals_vnet" {
   source = "../../../shared-modules/virtual-network"
@@ -43,8 +181,10 @@ module "portals_vnet" {
   subnets = {
     # Application Subnet
     "${local.portals_admin_dev.subnets[0].name}" = {
-      name             = local.portals_admin_dev.subnets[0].name
-      address_prefixes = [local.portals_admin_dev.subnets[0].address_prefix]
+      name                               = local.portals_admin_dev.subnets[0].name
+      address_prefixes                   = [local.portals_admin_dev.subnets[0].address_prefix]
+      network_security_group_resource_id = module.nsg_app_subnet.id
+      route_table_resource_id            = module.rt_app_subnet.id
       service_endpoints_with_location = [
         for endpoint in local.portals_admin_dev.subnets[0].service_endpoints : {
           service   = endpoint
@@ -57,13 +197,17 @@ module "portals_vnet" {
     "${local.portals_admin_dev.subnets[1].name}" = {
       name                                      = local.portals_admin_dev.subnets[1].name
       address_prefixes                          = [local.portals_admin_dev.subnets[1].address_prefix]
+      network_security_group_resource_id        = module.nsg_private_endpoints_subnet.id
+      route_table_resource_id                   = module.rt_private_endpoints_subnet.id
       private_endpoint_network_policies_enabled = false
     }
 
     # VNet Integration Subnet (for App Service if needed)
     "${local.portals_admin_dev.subnets[2].name}" = {
-      name             = local.portals_admin_dev.subnets[2].name
-      address_prefixes = [local.portals_admin_dev.subnets[2].address_prefix]
+      name                               = local.portals_admin_dev.subnets[2].name
+      address_prefixes                   = [local.portals_admin_dev.subnets[2].address_prefix]
+      network_security_group_resource_id = module.nsg_vnet_integration_subnet.id
+      route_table_resource_id            = module.rt_vnet_integration_subnet.id
       service_endpoints_with_location = [
         for endpoint in local.portals_admin_dev.subnets[2].service_endpoints : {
           service   = endpoint
@@ -80,8 +224,10 @@ module "portals_vnet" {
 
     # Data Services Subnet
     "${local.portals_admin_dev.subnets[3].name}" = {
-      name             = local.portals_admin_dev.subnets[3].name
-      address_prefixes = [local.portals_admin_dev.subnets[3].address_prefix]
+      name                               = local.portals_admin_dev.subnets[3].name
+      address_prefixes                   = [local.portals_admin_dev.subnets[3].address_prefix]
+      network_security_group_resource_id = module.nsg_data_services_subnet.id
+      route_table_resource_id            = module.rt_data_services_subnet.id
       service_endpoints_with_location = [
         for endpoint in local.portals_admin_dev.subnets[3].service_endpoints : {
           service   = endpoint

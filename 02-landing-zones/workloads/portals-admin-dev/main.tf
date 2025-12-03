@@ -1,54 +1,37 @@
 # =============================================================================
-# Landing Zone Subscription Placement - Portal Admin Dev
+# Landing Zone Workload Pattern - Portal Admin Dev
 # This places the portal admin dev subscription into the acme-portals management group
+# and sets up monitoring resources using the landing-zone-workload pattern module
 # Deploy this AFTER alz-foundation
 # =============================================================================
 
-# Data source to get the acme-portals management group
-data "azurerm_management_group" "portals" {
-  name = var.management_group_name
-}
+module "landing_zone" {
+  source = "../../../shared-modules/pattern-modules/lz-workload"
 
-# =============================================================================
-# Naming Module for Consistent Azure Resource Naming
-# =============================================================================
+  # Subscription and Management Group
+  subscription_id       = var.subscription_id
+  tenant_id             = var.tenant_id
+  management_group_name = var.management_group_name
 
-module "naming" {
-  source   = "../../../shared-modules/utility-modules/naming"
-  location = var.location
-  suffix   = ["portals", var.environment]
-}
+  # Naming and Tagging
+  landing_zone_name = "portals-admin-dev"
+  purpose           = "Landing Zone - Portal Admin Dev"
+  environment       = var.environment
+  location          = var.location
+  naming_suffix     = ["portals", var.environment]
 
-# Place the subscription into the acme-portals management group
-resource "azurerm_management_group_subscription_association" "portal_dev" {
-  management_group_id = data.azurerm_management_group.portals.id
-  subscription_id     = "/subscriptions/${var.subscription_id}"
-}
+  # Monitoring
+  create_log_analytics = var.create_log_analytics
+  log_retention_days   = var.log_retention_days
 
-# =============================================================================
-# =============================================================================
-# Monitoring Resources using AVM Wrapper Modules
-# =============================================================================
+  # Networking
+  ipam_config_path = "../../ipam.yaml"
+  ipam_key         = "portals-admin-dev"
 
-# Resource Group for monitoring resources
-module "monitoring_resource_group" {
-  count  = var.create_log_analytics ? 1 : 0
-  source = "../../../shared-modules/resource-modules/resource-group"
-
-  name     = "${module.naming.resource_group.name}-mon"
-  location = var.location
-  tags     = local.monitoring_tags
-}
-
-# Log Analytics Workspace for portal admin dev diagnostics
-module "log_analytics_workspace" {
-  count  = var.create_log_analytics ? 1 : 0
-  source = "../../../shared-modules/resource-modules/log-analytics-workspace"
-
-  name                = module.naming.log_analytics_workspace.name_unique
-  resource_group_name = module.monitoring_resource_group[0].name
-  location            = var.location
-  sku                 = "PerGB2018"
-  retention_in_days   = var.log_retention_days
-  tags                = local.monitoring_tags
+  # Tags - will be merged with pattern module defaults
+  tags = var.tags
+  common_tags = {
+    DeploymentMethod = "Terraform"
+    Repository       = "emergent-azure-landing-zone"
+  }
 }

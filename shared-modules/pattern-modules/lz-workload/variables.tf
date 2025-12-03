@@ -76,3 +76,21 @@ variable "tenant_id" {
   description = "The Azure AD tenant ID"
   type        = string
 }
+
+# Networking Configuration
+variable "ipam_config_path" {
+  description = "Path to the IPAM YAML configuration file (relative to calling module)"
+  type        = string
+  default     = "../../ipam.yaml"
+}
+
+variable "ipam_key" {
+  description = "The key in the IPAM YAML file for this landing zone's network configuration"
+  type        = string
+}
+
+variable "network_resource_group_suffix" {
+  description = "Suffix for the network resource group name"
+  type        = string
+  default     = "network"
+}

@@ -48,3 +48,44 @@ output "monitoring_resource_group_id" {
   description = "The ID of the monitoring resource group (if created)"
   value       = var.create_log_analytics ? module.monitoring_resource_group[0].resource_id : null
 }
+
+# Network Outputs
+output "vnet_id" {
+  description = "The ID of the virtual network"
+  value       = module.vnet.resource_id
+}
+
+output "vnet_name" {
+  description = "The name of the virtual network"
+  value       = module.vnet.name
+}
+
+output "vnet_address_space" {
+  description = "The address space of the virtual network"
+  value       = module.vnet.address_space
+}
+
+output "network_resource_group_name" {
+  description = "The name of the network resource group"
+  value       = azurerm_resource_group.network.name
+}
+
+output "network_resource_group_id" {
+  description = "The ID of the network resource group"
+  value       = azurerm_resource_group.network.id
+}
+
+output "subnets" {
+  description = "Map of subnet names to subnet details"
+  value       = module.vnet.subnets
+}
+
+output "nsg_ids" {
+  description = "Map of NSG names to NSG IDs"
+  value       = { for idx, nsg in module.nsg : local.ipam_config.subnets[idx].name => nsg.id }
+}
+
+output "route_table_ids" {
+  description = "Map of route table names to route table IDs"
+  value       = { for idx, rt in module.route_table : local.ipam_config.subnets[idx].name => rt.id }
+}

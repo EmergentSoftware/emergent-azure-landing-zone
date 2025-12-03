@@ -1,7 +1,6 @@
 variable "subscription_id" {
   description = "The portal customer prod subscription ID"
   type        = string
-  default     = "b13c8883-9bf3-4ebb-af9c-7ebfcc8e9a5a" # acme-portals-customer-prod
 }
 
 variable "tenant_id" {

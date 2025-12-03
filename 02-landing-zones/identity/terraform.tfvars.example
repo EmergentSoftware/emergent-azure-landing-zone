@@ -1,12 +1,5 @@
-# =============================================================================
-# Identity Landing Zone Configuration
-# =============================================================================
-
-# Azure AD tenant ID
-tenant_id = "0b79ac7b-0cc7-4d9f-a549-3b8cc894ac9b"
-
-# Identity subscription ID (already set as default in variables.tf)
-# subscription_id = "05783002-9abe-4167-9270-694d4e9bb733"
+subscription_id = "00000000-0000-0000-0000-000000000000"
+tenant_id       = "00000000-0000-0000-0000-000000000000"
 
 # Management group name (already set as default in variables.tf)
 # management_group_name = "acme-identity"

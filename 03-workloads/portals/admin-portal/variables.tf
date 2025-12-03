@@ -5,7 +5,6 @@
 variable "subscription_id" {
   description = "The Azure subscription ID where resources will be deployed"
   type        = string
-  default     = "9a877ddf-9796-43a8-a557-f6af1df195bf" # portals-dev subscription
 }
 
 variable "landing_zone" {

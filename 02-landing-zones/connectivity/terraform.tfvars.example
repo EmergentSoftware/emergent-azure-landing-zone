@@ -1,12 +1,5 @@
-# =============================================================================
-# Connectivity Landing Zone Configuration
-# =============================================================================
-
-# Azure AD tenant ID
-tenant_id = "0b79ac7b-0cc7-4d9f-a549-3b8cc894ac9b"
-
-# Connectivity subscription ID (already set as default in variables.tf)
-# subscription_id = "c82e0943-3765-49ff-97ff-92855167f3ea"
+subscription_id = "00000000-0000-0000-0000-000000000000"
+tenant_id       = "00000000-0000-0000-0000-000000000000"
 
 # Management group name (already set as default in variables.tf)
 # management_group_name = "acme-connectivity"

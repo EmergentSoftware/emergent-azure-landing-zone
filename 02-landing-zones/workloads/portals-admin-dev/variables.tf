@@ -1,13 +1,11 @@
 variable "subscription_id" {
   description = "The portal admin dev subscription ID"
   type        = string
-  default     = "588aa873-b13e-40bc-a96f-89805c56d7d0" # acme-portals-admin-dev
 }
 
 variable "tenant_id" {
   description = "Azure AD tenant ID"
   type        = string
-  default     = "0b79ac7b-0cc7-4d9f-a549-3b8cc894ac9b"
 }
 
 variable "management_group_name" {

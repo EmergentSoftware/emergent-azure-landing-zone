@@ -1,12 +1,5 @@
-# =============================================================================
-# Management Landing Zone Configuration
-# =============================================================================
-
-# Azure AD tenant ID
-tenant_id = "0b79ac7b-0cc7-4d9f-a549-3b8cc894ac9b"
-
-# Management subscription ID (already set as default in variables.tf)
-# subscription_id = "1302f5fd-f3b5-4eda-909c-e3ae2dfee3d6"
+subscription_id = "00000000-0000-0000-0000-000000000000"
+tenant_id       = "00000000-0000-0000-0000-000000000000"
 
 # Management group name (already set as default in variables.tf)
 # management_group_name = "acme-management"

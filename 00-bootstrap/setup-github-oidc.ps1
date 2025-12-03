@@ -136,40 +136,56 @@ catch {
     Write-Host "  Role may already be assigned (this is fine)" -ForegroundColor Gray
 }
 
-# Configure OIDC federated credential
-Write-Host "`nConfiguring OIDC federated credential..." -ForegroundColor Yellow
-$credentialName = "github-$GitHubRepo-$Branch"
-$subject = "repo:$GitHubOrg/${GitHubRepo}:ref:refs/heads/$Branch"
+# Configure OIDC federated credentials
+Write-Host "`nConfiguring OIDC federated credentials..." -ForegroundColor Yellow
 
-# Check if credential already exists
+# Get existing credentials
 $existingCreds = az ad app federated-credential list --id $appId --output json | ConvertFrom-Json
-$existingCred = $existingCreds | Where-Object { $_.subject -eq $subject }
 
-if ($existingCred) {
+# Credential 1: Main branch
+$credentialName1 = "github-$GitHubRepo-$Branch"
+$subject1 = "repo:$GitHubOrg/${GitHubRepo}:ref:refs/heads/$Branch"
+$existingCred1 = $existingCreds | Where-Object { $_.subject -eq $subject1 }
+
+if ($existingCred1) {
     Write-Host "✓ Federated credential already exists for branch: $Branch" -ForegroundColor Green
 }
 else {
-    # Create federated credential using JSON file
     $credentialJson = @{
-        name      = $credentialName
+        name      = $credentialName1
         issuer    = "https://token.actions.githubusercontent.com"
-        subject   = $subject
+        subject   = $subject1
         audiences = @("api://AzureADTokenExchange")
     } | ConvertTo-Json
 
     $tempFile = [System.IO.Path]::GetTempFileName()
-    $credentialJson | Out-File -FilePath $tempFile -Encoding UTF8
+    $credentialJson | Out-File -FilePath $tempFile -Encoding utf8
+    az ad app federated-credential create --id $appId --parameters $tempFile --output none
+    Remove-Item $tempFile
+    Write-Host "✓ Created federated credential for branch: $Branch" -ForegroundColor Green
+}
 
-    try {
-        az ad app federated-credential create `
-            --id $appId `
-            --parameters "@$tempFile" `
-            --output none
-        Write-Host "✓ Created federated credential for: $subject" -ForegroundColor Green
-    }
-    finally {
-        Remove-Item $tempFile -ErrorAction SilentlyContinue
-    }
+# Credential 2: Pull requests
+$credentialName2 = "github-$GitHubRepo-pr"
+$subject2 = "repo:$GitHubOrg/${GitHubRepo}:pull_request"
+$existingCred2 = $existingCreds | Where-Object { $_.subject -eq $subject2 }
+
+if ($existingCred2) {
+    Write-Host "✓ Federated credential already exists for pull requests" -ForegroundColor Green
+}
+else {
+    $credentialJson = @{
+        name      = $credentialName2
+        issuer    = "https://token.actions.githubusercontent.com"
+        subject   = $subject2
+        audiences = @("api://AzureADTokenExchange")
+    } | ConvertTo-Json
+
+    $tempFile = [System.IO.Path]::GetTempFileName()
+    $credentialJson | Out-File -FilePath $tempFile -Encoding utf8
+    az ad app federated-credential create --id $appId --parameters $tempFile --output none
+    Remove-Item $tempFile
+    Write-Host "✓ Created federated credential for pull requests" -ForegroundColor Green
 }
 
 # Display summary

@@ -3,9 +3,9 @@
 # =============================================================================
 
 subscription_id = "00000000-0000-0000-0000-000000000000"
-workload_name   = "data"
+workload_name   = "site"
 environment     = "dev"
-location        = "eastus2"
+location        = "eastus"
 
 # Storage Account configuration
 storage_account_tier     = "Standard"

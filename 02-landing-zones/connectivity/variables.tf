@@ -15,9 +15,9 @@ variable "management_group_name" {
 }
 
 variable "location" {
-  description = "Azure region for resources"
+  description = "Primary Azure region for resources"
   type        = string
-  default     = "eastus2"
+  default     = "eastus"
 }
 
 variable "location_short" {

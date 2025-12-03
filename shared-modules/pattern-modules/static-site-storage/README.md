@@ -19,7 +19,7 @@ module "static_site" {
   subscription_id = var.subscription_id
   tenant_id       = var.tenant_id
   environment     = "dev"
-  location        = "eastus2"
+  location        = "eastus"
   naming_suffix   = ["portals", "admin", "dev"]
   purpose         = "Admin Portal Static Site"
 

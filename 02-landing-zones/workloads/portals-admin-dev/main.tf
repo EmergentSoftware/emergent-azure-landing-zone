@@ -18,7 +18,7 @@ module "landing_zone" {
   purpose           = "Landing Zone - Portal Admin Dev"
   environment       = var.environment
   location          = var.location
-  naming_suffix     = ["portals", "admin", var.environment]
+  naming_suffix     = ["portals", "admin"]
 
   # Monitoring
   create_log_analytics = var.create_log_analytics

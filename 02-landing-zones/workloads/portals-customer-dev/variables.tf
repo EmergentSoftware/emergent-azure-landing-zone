@@ -21,9 +21,9 @@ variable "environment" {
 }
 
 variable "location" {
-  description = "Azure region for shared resources"
+  description = "Azure region for resources"
   type        = string
-  default     = "eastus2"
+  default     = "eastus"
 }
 
 # Monitoring Variables

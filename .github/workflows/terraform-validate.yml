@@ -192,6 +192,7 @@ jobs:
       - name: Generate plan summary
         id: plan-summary
         if: always()
+        shell: bash
         run: |
           PLAN_FILE="${{ matrix.directory }}/plan_output.txt"
           if [ -f "$PLAN_FILE" ]; then
@@ -203,15 +204,16 @@ jobs:
             ADD=${ADD:-0}
             CHANGE=${CHANGE:-0}
             DESTROY=${DESTROY:-0}
-
-            echo "add=${ADD}" >> $GITHUB_OUTPUT
-            echo "change=${CHANGE}" >> $GITHUB_OUTPUT
-            echo "destroy=${DESTROY}" >> $GITHUB_OUTPUT
           else
-            echo "add=0" >> $GITHUB_OUTPUT
-            echo "change=0" >> $GITHUB_OUTPUT
-            echo "destroy=0" >> $GITHUB_OUTPUT
+            ADD=0
+            CHANGE=0
+            DESTROY=0
           fi
+
+          # Write to GITHUB_OUTPUT
+          echo "add=$ADD" >> "$GITHUB_OUTPUT"
+          echo "change=$CHANGE" >> "$GITHUB_OUTPUT"
+          echo "destroy=$DESTROY" >> "$GITHUB_OUTPUT"
 
       - name: Set Output
         id: set-output

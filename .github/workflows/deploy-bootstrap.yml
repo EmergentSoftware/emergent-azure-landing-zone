@@ -110,7 +110,7 @@ jobs:
             const lines = planOutput.split('\n');
             let resourceChanges = [];
             let inChanges = false;
-            
+
             for (const line of lines) {
               if (line.includes('Terraform will perform the following actions:')) {
                 inChanges = true;
@@ -124,7 +124,7 @@ jobs:
               }
             }
 
-            const resourceSection = resourceChanges.length > 0 
+            const resourceSection = resourceChanges.length > 0
               ? `\n<details>\n<summary>📦 Resource Changes</summary>\n\n\`\`\`terraform\n${resourceChanges.join('\n')}\n\`\`\`\n</details>\n`
               : '';
 

@@ -112,7 +112,14 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: terraform init -backend=false
+        run: |
+          if [ -f "backend.tfbackend" ]; then
+            echo "Found backend config, initializing with backend"
+            terraform init -backend-config="backend.tfbackend"
+          else
+            echo "No backend config, initializing without backend"
+            terraform init -backend=false
+          fi
         working-directory: ${{ matrix.directory }}
         continue-on-error: true
 
@@ -218,8 +225,9 @@ jobs:
       - name: Set Output
         id: set-output
         if: always()
+        shell: bash
         run: |
-          echo "result=${{ matrix.directory }}|${{ steps.fmt.outcome }}|${{ steps.init.outcome }}|${{ steps.validate.outcome }}|${{ steps.plan.outcome }}|${{ steps.plan-summary.outputs.add }}|${{ steps.plan-summary.outputs.change }}|${{ steps.plan-summary.outputs.destroy }}" >> $GITHUB_OUTPUT
+          echo "result=${{ matrix.directory }}|${{ steps.fmt.outcome }}|${{ steps.init.outcome }}|${{ steps.validate.outcome }}|${{ steps.plan.outcome }}|${{ steps.plan-summary.outputs.add }}|${{ steps.plan-summary.outputs.change }}|${{ steps.plan-summary.outputs.destroy }}" >> "$GITHUB_OUTPUT"
 
       - name: Upload plan artifact
         if: steps.plan.outcome == 'success'

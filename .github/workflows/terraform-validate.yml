@@ -136,13 +136,50 @@ jobs:
         run: |
           if [ -f "${{ matrix.directory }}/terraform.tfvars.example" ]; then
             cp "${{ matrix.directory }}/terraform.tfvars.example" "${{ matrix.directory }}/terraform.tfvars"
+
+            # Determine subscription ID based on directory path
+            SUBSCRIPTION_ID="${{ secrets.AZURE_SUBSCRIPTION_ID }}"  # default
+
+            case "${{ matrix.directory }}" in
+              *"02-landing-zones/management")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_MANAGEMENT }}"
+                ;;
+              *"02-landing-zones/identity")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_IDENTITY }}"
+                ;;
+              *"02-landing-zones/connectivity")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_CONNECTIVITY }}"
+                ;;
+              *"portals-admin-dev")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}"
+                ;;
+              *"portals-admin-prod")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}"
+                ;;
+              *"portals-customer-dev")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}"
+                ;;
+              *"portals-customer-prod")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}"
+                ;;
+            esac
+
+            # Replace placeholder values with real values
+            sed -i "s/subscription_id = \"00000000-0000-0000-0000-000000000000\"/subscription_id = \"$SUBSCRIPTION_ID\"/g" "${{ matrix.directory }}/terraform.tfvars"
+            sed -i 's/tenant_id = "00000000-0000-0000-0000-000000000000"/tenant_id = "${{ secrets.AZURE_TENANT_ID }}"/g' "${{ matrix.directory }}/terraform.tfvars"
+
             echo "has_tfvars=true" >> $GITHUB_OUTPUT
+            echo "subscription_id=$SUBSCRIPTION_ID" >> $GITHUB_OUTPUT
           else
             echo "has_tfvars=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Terraform Plan
         id: plan
+        env:
+          ARM_USE_CLI: true
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ steps.check-tfvars.outputs.subscription_id || secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           if [ -f "terraform.tfvars" ]; then
             terraform plan -var-file="terraform.tfvars" -no-color -out=tfplan 2>&1 | tee plan_output.txt

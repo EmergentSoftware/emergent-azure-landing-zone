@@ -1,56 +1,65 @@
+# =============================================================================
+# Landing Zone Pattern Module Outputs
+# =============================================================================
+
 output "management_group_id" {
   description = "The ID of the portals management group"
-  value       = data.azurerm_management_group.portals.id
+  value       = module.landing_zone.management_group_id
 }
 
 output "subscription_association_id" {
   description = "The ID of the subscription association"
-  value       = azurerm_management_group_subscription_association.portal_prod.id
+  value       = module.landing_zone.subscription_association_id
 }
 
 output "subscription_id" {
   description = "The portal admin prod subscription ID"
-  value       = var.subscription_id
+  value       = module.landing_zone.subscription_id
 }
 
 # Networking Outputs
-output "portals_vnet_id" {
-  description = "The ID of the portals spoke virtual network"
-  value       = module.portals_vnet.resource_id
+output "vnet_id" {
+  description = "The ID of the virtual network"
+  value       = module.landing_zone.vnet_id
 }
 
-output "portals_vnet_name" {
-  description = "The name of the portals spoke virtual network"
-  value       = module.portals_vnet.name
+output "vnet_name" {
+  description = "The name of the virtual network"
+  value       = module.landing_zone.vnet_name
 }
 
-output "portals_vnet_address_space" {
-  description = "The address space of the portals spoke virtual network"
-  value       = module.portals_vnet.address_space
+output "vnet_address_space" {
+  description = "The address space of the virtual network"
+  value       = module.landing_zone.vnet_address_space
 }
 
-output "portals_network_resource_group_name" {
-  description = "The name of the portals network resource group"
-  value       = azurerm_resource_group.network.name
+output "network_resource_group_name" {
+  description = "The name of the network resource group"
+  value       = module.landing_zone.network_resource_group_name
 }
 
-output "portals_network_resource_group_id" {
-  description = "The ID of the portals network resource group"
-  value       = azurerm_resource_group.network.id
+output "network_resource_group_id" {
+  description = "The ID of the network resource group"
+  value       = module.landing_zone.network_resource_group_id
+}
+
+output "subnets" {
+  description = "Map of subnet names to subnet details"
+  value       = module.landing_zone.subnets
 }
 
 # Monitoring Outputs
 output "log_analytics_workspace_id" {
   description = "The resource ID of the Log Analytics workspace (if created)"
-  value       = var.create_log_analytics ? module.log_analytics_workspace[0].resource_id : null
+  value       = module.landing_zone.log_analytics_workspace_id
 }
 
 output "log_analytics_workspace_resource_id" {
   description = "The resource ID of the Log Analytics workspace for use in workloads (if created)"
-  value       = var.create_log_analytics ? module.log_analytics_workspace[0].resource_id : ""
+  value       = module.landing_zone.log_analytics_workspace_resource_id
 }
 
 output "monitoring_resource_group_name" {
   description = "The name of the monitoring resource group (if created)"
-  value       = var.create_log_analytics ? module.monitoring_resource_group[0].name : null
+  value       = module.landing_zone.monitoring_resource_group_name
 }

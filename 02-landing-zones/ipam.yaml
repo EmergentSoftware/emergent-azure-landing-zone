@@ -202,35 +202,35 @@ portals-customer-dev:
       service_endpoints: []
       delegations: []
 
-# Portals Landing Zone - Production
-portals-prod:
+# Portals Admin Landing Zone - Production
+portals-admin-prod:
   location: "eastus2"
   location_short: "eus2"
   vnet:
-    name: "acme-vnet-portals-prod-eus2"
-    address_space: "10.101.0.0/16"
+    name: "acme-vnet-portals-admin-prod-eus2"
+    address_space: "10.102.0.0/16"
     dns_servers: []
 
   subnets:
-    # Application Subnet
-    - name: "acme-snet-portals-apps-prod-eus2"
-      address_prefix: "10.101.1.0/24"
-      purpose: "Application workloads and compute"
+    # Application Subnet - For admin portal app workloads
+    - name: "acme-snet-portals-admin-apps-prod-eus2"
+      address_prefix: "10.102.1.0/24"
+      purpose: "Admin portal application workloads"
       service_endpoints: []
       delegations: []
 
-    # Private Endpoints Subnet
-    - name: "acme-snet-portals-pes-prod-eus2"
-      address_prefix: "10.101.2.0/24"
-      purpose: "Private endpoints for Static Web Apps, Storage, etc."
+    # Private Endpoints Subnet - For Static Web Apps and other PaaS
+    - name: "acme-snet-portals-admin-pes-prod-eus2"
+      address_prefix: "10.102.2.0/24"
+      purpose: "Private endpoints for admin portal Static Web App, Storage, etc."
       service_endpoints: []
       delegations: []
       private_endpoint_network_policies: "Disabled"
 
-    # VNet Integration Subnet
-    - name: "acme-snet-portals-int-prod-eus2"
-      address_prefix: "10.101.3.0/24"
-      purpose: "VNet integration for App Services"
+    # VNet Integration Subnet - For App Service VNet integration
+    - name: "acme-snet-portals-admin-int-prod-eus2"
+      address_prefix: "10.102.3.0/24"
+      purpose: "VNet integration for App Services (if needed)"
       service_endpoints: []
       delegations:
         - name: "delegation"
@@ -240,9 +240,53 @@ portals-prod:
               - "Microsoft.Network/virtualNetworks/subnets/action"
 
     # Data Services Subnet
-    - name: "acme-snet-portals-data-prod-eus2"
-      address_prefix: "10.101.4.0/24"
-      purpose: "Database services and data platforms"
+    - name: "acme-snet-portals-admin-data-prod-eus2"
+      address_prefix: "10.102.4.0/24"
+      purpose: "Database services and data platforms for admin portal"
+      service_endpoints: []
+      delegations: []
+
+# Portals Customer Landing Zone - Production
+portals-customer-prod:
+  location: "eastus2"
+  location_short: "eus2"
+  vnet:
+    name: "acme-vnet-portals-customer-prod-eus2"
+    address_space: "10.112.0.0/16"
+    dns_servers: []
+
+  subnets:
+    # Application Subnet - For customer portal app workloads
+    - name: "acme-snet-portals-customer-apps-prod-eus2"
+      address_prefix: "10.112.1.0/24"
+      purpose: "Customer portal application workloads"
+      service_endpoints: []
+      delegations: []
+
+    # Private Endpoints Subnet - For Static Web Apps and other PaaS
+    - name: "acme-snet-portals-customer-pes-prod-eus2"
+      address_prefix: "10.112.2.0/24"
+      purpose: "Private endpoints for customer portal Static Web App, Storage, etc."
+      service_endpoints: []
+      delegations: []
+      private_endpoint_network_policies: "Disabled"
+
+    # VNet Integration Subnet - For App Service VNet integration
+    - name: "acme-snet-portals-customer-int-prod-eus2"
+      address_prefix: "10.112.3.0/24"
+      purpose: "VNet integration for App Services (if needed)"
+      service_endpoints: []
+      delegations:
+        - name: "delegation"
+          service_delegation:
+            name: "Microsoft.Web/serverFarms"
+            actions:
+              - "Microsoft.Network/virtualNetworks/subnets/action"
+
+    # Data Services Subnet
+    - name: "acme-snet-portals-customer-data-prod-eus2"
+      address_prefix: "10.112.4.0/24"
+      purpose: "Customer portal application and data platforms for customer portal"
       service_endpoints: []
       delegations: []
 

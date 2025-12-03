@@ -27,18 +27,6 @@ variable "location" {
   default     = "eastus2"
 }
 
-variable "location_short" {
-  description = "Short name for Azure region"
-  type        = string
-  default     = "eus2"
-}
-
-variable "dns_servers" {
-  description = "List of DNS servers for the VNet (empty = Azure default DNS)"
-  type        = list(string)
-  default     = []
-}
-
 # Monitoring Variables
 variable "create_log_analytics" {
   description = "Whether to create a Log Analytics workspace for this landing zone"
@@ -56,13 +44,4 @@ variable "tags" {
   description = "A map of tags to add to all resources"
   type        = map(string)
   default     = {}
-}
-
-variable "common_tags" {
-  description = "Common tags to be applied to all resources"
-  type        = map(string)
-  default = {
-    DeploymentMethod = "Terraform"
-    Repository       = "emergent-azure-landing-zone"
-  }
 }

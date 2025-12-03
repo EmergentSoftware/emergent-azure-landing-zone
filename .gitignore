@@ -51,5 +51,8 @@ Thumbs.db
 # Plan files (may contain sensitive data)
 *.tfplan
 tfplan
+plan_output.txt
+
+# Run scripts
 run.sh
 run.ps1

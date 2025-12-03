@@ -61,6 +61,21 @@ jobs:
         with:
           terraform_version: "~> 1.12"
 
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            ${{ matrix.directory }}/.terraform
+          key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-terraform-
+
+      - name: Configure Terraform plugin cache
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
+
       - name: Terraform Format Check
         id: fmt
         run: terraform fmt -check -recursive
@@ -97,11 +112,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const results = `${{ join(needs.terraform-validate.outputs.*, '\n') }}`.split('\n').filter(r => r);
-            
+
             let passed = 0;
             let failed = 0;
             let details = '| Directory | Format | Init | Validate |\n|-----------|--------|------|----------|\n';
-            
+
             results.forEach(result => {
               if (!result) return;
               const [dir, fmt, init, validate] = result.split('|');
@@ -109,31 +124,31 @@ jobs:
               const initIcon = init === 'success' ? '✅' : '❌';
               const validateIcon = validate === 'success' ? '✅' : '❌';
               details += `| \`${dir}\` | ${fmtIcon} | ${initIcon} | ${validateIcon} |\n`;
-              
+
               if (fmt === 'success' && init === 'success' && validate === 'success') {
                 passed++;
               } else {
                 failed++;
               }
             });
-            
-            const summary = failed === 0 
+
+            const summary = failed === 0
               ? `### ✅ All Terraform Validations Passed!\n\n**${passed}** directories validated successfully.`
               : `### ⚠️ Terraform Validation Results\n\n**${passed}** passed, **${failed}** failed.`;
-            
+
             const output = `${summary}\n\n${details}\n\n*Pushed by: @${{ github.actor }}*`;
-            
+
             // Find existing comment
             const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
-            
-            const botComment = comments.data.find(comment => 
+
+            const botComment = comments.data.find(comment =>
               comment.user.type === 'Bot' && comment.body.includes('Terraform Validation')
             );
-            
+
             if (botComment) {
               // Update existing comment
               await github.rest.issues.updateComment({

@@ -1,0 +1,177 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.tf'
+      - '**.tfvars.example'
+      - '.github/workflows/terraform-plan.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  find-terraform-dirs:
+    name: Find Terraform Directories
+    runs-on: ubuntu-latest
+    outputs:
+      directories: ${{ steps.set-dirs.outputs.directories }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Find root Terraform directories
+        id: set-dirs
+        run: |
+          # Find directories with backend configuration (deployable roots)
+          DIRS=$(find . -type f \( -name "backend.tfbackend" -o -name "main.tf" \) -not -path "*/.terraform/*" -not -path "*/.git/*" -not -path "*/modules/*" | \
+                 xargs -I {} dirname {} | \
+                 sort -u | \
+                 jq -R -s -c 'split("\n")[:-1] | map(sub("^./"; "")) | map(select(length > 0))')
+          echo "directories=$DIRS" >> $GITHUB_OUTPUT
+          echo "Found deployable Terraform directories:"
+          echo "$DIRS" | jq -r '.[]'
+
+  terraform-plan:
+    name: Plan ${{ matrix.directory }}
+    runs-on: ubuntu-latest
+    needs: find-terraform-dirs
+    strategy:
+      fail-fast: false
+      matrix:
+        directory: ${{ fromJson(needs.find-terraform-dirs.outputs.directories) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.12"
+
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            ${{ matrix.directory }}/.terraform
+          key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-terraform-
+
+      - name: Configure Terraform plugin cache
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
+
+      - name: Check for backend config
+        id: check-backend
+        run: |
+          if [ -f "${{ matrix.directory }}/backend.tfbackend" ]; then
+            echo "has_backend=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_backend=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for tfvars.example
+        id: check-tfvars
+        run: |
+          if [ -f "${{ matrix.directory }}/terraform.tfvars.example" ]; then
+            cp "${{ matrix.directory }}/terraform.tfvars.example" "${{ matrix.directory }}/terraform.tfvars"
+            echo "has_tfvars=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tfvars=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Terraform Init (with backend)
+        if: steps.check-backend.outputs.has_backend == 'true'
+        run: terraform init -backend=false
+        working-directory: ${{ matrix.directory }}
+        continue-on-error: true
+
+      - name: Terraform Init (without backend)
+        if: steps.check-backend.outputs.has_backend == 'false'
+        run: terraform init
+        working-directory: ${{ matrix.directory }}
+        continue-on-error: true
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          if [ -f "terraform.tfvars" ]; then
+            terraform plan -var-file="terraform.tfvars" -no-color -out=tfplan 2>&1 | tee plan_output.txt
+          else
+            terraform plan -no-color -out=tfplan 2>&1 | tee plan_output.txt
+          fi
+        working-directory: ${{ matrix.directory }}
+        continue-on-error: true
+
+      - name: Generate plan summary
+        id: summary
+        if: always()
+        run: |
+          if [ -f "${{ matrix.directory }}/plan_output.txt" ]; then
+            # Extract key changes
+            ADD=$(grep -c "will be created" "${{ matrix.directory }}/plan_output.txt" || echo "0")
+            CHANGE=$(grep -c "will be updated" "${{ matrix.directory }}/plan_output.txt" || echo "0")
+            DESTROY=$(grep -c "will be destroyed" "${{ matrix.directory }}/plan_output.txt" || echo "0")
+
+            echo "add=$ADD" >> $GITHUB_OUTPUT
+            echo "change=$CHANGE" >> $GITHUB_OUTPUT
+            echo "destroy=$DESTROY" >> $GITHUB_OUTPUT
+            echo "status=${{ steps.plan.outcome }}" >> $GITHUB_OUTPUT
+          else
+            echo "add=0" >> $GITHUB_OUTPUT
+            echo "change=0" >> $GITHUB_OUTPUT
+            echo "destroy=0" >> $GITHUB_OUTPUT
+            echo "status=skipped" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload plan artifact
+        if: steps.plan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ matrix.directory }}
+          path: ${{ matrix.directory }}/tfplan
+          retention-days: 5
+
+      - name: Post plan to PR
+        if: github.event_name == 'pull_request' && steps.plan.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const planOutput = fs.readFileSync('${{ matrix.directory }}/plan_output.txt', 'utf8');
+            const add = '${{ steps.summary.outputs.add }}';
+            const change = '${{ steps.summary.outputs.change }}';
+            const destroy = '${{ steps.summary.outputs.destroy }}';
+
+            // Truncate plan if too long
+            const maxLength = 60000;
+            const truncatedPlan = planOutput.length > maxLength
+              ? planOutput.substring(0, maxLength) + '\n\n... (truncated)'
+              : planOutput;
+
+            const output = "### 📋 Terraform Plan: `${{ matrix.directory }}`\n\n" +
+              "**Changes Summary:**\n" +
+              "- 🟢 Create: " + add + "\n" +
+              "- 🟡 Update: " + change + "\n" +
+              "- 🔴 Destroy: " + destroy + "\n\n" +
+              "<details><summary>Show Plan</summary>\n\n" +
+              "```terraform\n" +
+              truncatedPlan + "\n" +
+              "```\n\n" +
+              "</details>\n\n" +
+              "*Pusher: @${{ github.actor }}, Action: `${{ github.event_name }}`*";
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });

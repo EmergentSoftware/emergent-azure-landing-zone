@@ -1,3 +1,13 @@
+# ==============================================================================
+# Bootstrap Infrastructure Deployment
+# ==============================================================================
+# Deploys the bootstrap layer (Terraform state storage):
+# - Runs terraform plan and creates approval issue
+# - Waits for manual approval via /approve or /reject comment
+# - Applies approved plan to deploy state storage infrastructure
+# - Triggers on push to main (00-bootstrap changes) or manual dispatch
+# ==============================================================================
+
 name: Deploy Bootstrap
 
 on:

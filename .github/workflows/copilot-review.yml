@@ -1,3 +1,12 @@
+# ==============================================================================
+# GitHub Copilot Code Review
+# ==============================================================================
+# Automated code review using GitHub Copilot:
+# - Reviews code changes in pull requests
+# - Provides AI-powered suggestions and feedback
+# - Runs on PR open, sync, and reopen events
+# ==============================================================================
+
 name: "Copilot Code Review"
 
 on:

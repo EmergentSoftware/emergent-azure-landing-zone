@@ -1,3 +1,15 @@
+# ==============================================================================
+# Complete Infrastructure Deployment
+# ==============================================================================
+# Orchestrates deployment of all infrastructure layers:
+# - Step 0: Bootstrap (state storage)
+# - Step 1: Foundation (management groups, policies)
+# - Step 2a-c: Platform landing zones (connectivity, identity, management)
+# - Step 3: Workload landing zones (4 environments in parallel)
+# - Step 4: Workloads (portal applications)
+# Manual trigger only with checkboxes to select which stages to deploy
+# ==============================================================================
+
 name: Deploy All Infrastructure
 
 on:

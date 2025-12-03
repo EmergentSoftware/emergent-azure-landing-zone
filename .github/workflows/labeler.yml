@@ -1,3 +1,12 @@
+# ==============================================================================
+# Pull Request Auto-Labeler
+# ==============================================================================
+# Automatically labels pull requests based on file paths:
+# - Adds labels based on which directories/files are modified
+# - Helps organize and categorize PRs
+# - Runs on PR open, sync, and reopen events
+# ==============================================================================
+
 name: "Pull Request Labeler"
 
 on:

@@ -22,23 +22,55 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Find root Terraform directories
+      - name: Find changed Terraform directories
         id: set-dirs
         run: |
-          # Find directories with backend configuration (deployable roots)
-          DIRS=$(find . -type f \( -name "backend.tfbackend" -o -name "main.tf" \) -not -path "*/.terraform/*" -not -path "*/.git/*" -not -path "*/modules/*" | \
-                 xargs -I {} dirname {} | \
-                 sort -u | \
-                 jq -R -s -c 'split("\n")[:-1] | map(sub("^./"; "")) | map(select(length > 0))')
-          echo "directories=$DIRS" >> $GITHUB_OUTPUT
-          echo "Found deployable Terraform directories:"
-          echo "$DIRS" | jq -r '.[]'
+          # Get list of changed files
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          fi
+
+          # Find unique directories containing changed .tf or .tfvars files
+          CHANGED_DIRS=$(echo "$CHANGED_FILES" | \
+            grep -E '\.(tf|tfvars\.example)$' | \
+            xargs -I {} dirname {} | \
+            sort -u)
+
+          # For each changed directory, find the root Terraform directory (one with main.tf or backend.tfbackend)
+          ROOT_DIRS=""
+          for dir in $CHANGED_DIRS; do
+            # Walk up the directory tree to find root
+            current_dir="$dir"
+            while [ "$current_dir" != "." ]; do
+              if [ -f "$current_dir/main.tf" ] || [ -f "$current_dir/backend.tfbackend" ]; then
+                ROOT_DIRS="$ROOT_DIRS $current_dir"
+                break
+              fi
+              current_dir=$(dirname "$current_dir")
+            done
+          done
+
+          # Remove duplicates and convert to JSON array
+          if [ -n "$ROOT_DIRS" ]; then
+            DIRS=$(echo "$ROOT_DIRS" | tr ' ' '\n' | sort -u | grep -v '^$' | jq -R -s -c 'split("\n")[:-1]')
+            echo "directories=$DIRS" >> $GITHUB_OUTPUT
+            echo "Found changed Terraform directories:"
+            echo "$DIRS" | jq -r '.[]'
+          else
+            echo "directories=[]" >> $GITHUB_OUTPUT
+            echo "No Terraform directories changed"
+          fi
 
   terraform-plan:
     name: Plan ${{ matrix.directory }}
     runs-on: ubuntu-latest
     needs: find-terraform-dirs
+    if: needs.find-terraform-dirs.outputs.directories != '[]'
     strategy:
       fail-fast: false
       matrix:

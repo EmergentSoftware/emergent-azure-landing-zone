@@ -35,7 +35,7 @@ data "azurerm_client_config" "current" {}
 # =============================================================================
 
 module "naming" {
-  source   = "../shared-modules/naming"
+  source   = "../shared-modules/utility-modules/naming"
   location = var.location
   suffix   = [var.environment]
 }
@@ -58,7 +58,7 @@ locals {
 # =============================================================================
 
 module "resource_group" {
-  source = "../shared-modules/resource-group"
+  source = "../shared-modules/resource-modules/resource-group"
 
   name     = module.naming.resource_group.name_unique
   location = var.location

@@ -1,13 +1,12 @@
 variable "subscription_id" {
-  description = "The portal admin dev subscription ID"
+  description = "The portal customer prod subscription ID"
   type        = string
-  default     = "588aa873-b13e-40bc-a96f-89805c56d7d0" # acme-portals-admin-dev
+  default     = "b13c8883-9bf3-4ebb-af9c-7ebfcc8e9a5a" # acme-portals-customer-prod
 }
 
 variable "tenant_id" {
   description = "Azure AD tenant ID"
   type        = string
-  default     = "0b79ac7b-0cc7-4d9f-a549-3b8cc894ac9b"
 }
 
 variable "management_group_name" {
@@ -19,7 +18,7 @@ variable "management_group_name" {
 variable "environment" {
   description = "Environment name (dev, prod, etc.)"
   type        = string
-  default     = "dev"
+  default     = "prod"
 }
 
 variable "location" {
@@ -54,7 +53,16 @@ variable "log_retention_days" {
 }
 
 variable "tags" {
-  description = "Additional tags to add to all resources (merged with common_tags from locals.tf)"
+  description = "A map of tags to add to all resources"
   type        = map(string)
   default     = {}
+}
+
+variable "common_tags" {
+  description = "Common tags to be applied to all resources"
+  type        = map(string)
+  default = {
+    DeploymentMethod = "Terraform"
+    Repository       = "emergent-azure-landing-zone"
+  }
 }

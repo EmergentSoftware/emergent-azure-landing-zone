@@ -5,7 +5,7 @@
 
 # Resource Group for Private DNS Zones
 module "private_dns_resource_group" {
-  source = "../../shared-modules/resource-group"
+  source = "../../shared-modules/resource-modules/resource-group"
 
   name     = "${module.naming.resource_group.name}-privatedns"
   location = var.location

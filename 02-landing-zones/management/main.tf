@@ -34,7 +34,7 @@ data "azurerm_management_group" "management" {
 # =============================================================================
 
 module "naming" {
-  source   = "../../shared-modules/naming"
+  source   = "../../shared-modules/utility-modules/naming"
   location = var.location
   suffix   = ["mgmt", var.environment]
 }
@@ -68,7 +68,7 @@ resource "azurerm_management_group_subscription_association" "management" {
 # Resource Group for networking resources
 module "networking_resource_group" {
   count  = var.create_virtual_network ? 1 : 0
-  source = "../../shared-modules/resource-group"
+  source = "../../shared-modules/resource-modules/resource-group"
 
   name     = "${module.naming.resource_group.name}-net"
   location = var.location
@@ -78,7 +78,7 @@ module "networking_resource_group" {
 # Virtual Network for management tools
 module "virtual_network" {
   count  = var.create_virtual_network ? 1 : 0
-  source = "../../shared-modules/virtual-network"
+  source = "../../shared-modules/resource-modules/virtual-network"
 
   name                = module.naming.virtual_network.name_unique
   resource_group_name = module.networking_resource_group[0].name

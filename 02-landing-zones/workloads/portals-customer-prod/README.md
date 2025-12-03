@@ -42,7 +42,7 @@ Customer Portal Dev Subscription (9a877ddf-9796-43a8-a557-f6af1df195bf)
 ### Deploy
 
 ```powershell
-cd 02-landing-zones/workloads/portals-customer-dev
+cd 02-landing-zones/workloads/portals-customer-prod
 
 # Initialize with backend configuration
 terraform init -backend-config="backend.tfbackend"

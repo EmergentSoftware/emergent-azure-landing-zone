@@ -19,7 +19,7 @@ resource "random_string" "suffix" {
 
 # Resource Group for Hub Network
 module "network_resource_group" {
-  source = "../../shared-modules/resource-group"
+  source = "../../shared-modules/resource-modules/resource-group"
 
   name     = "acme-rg-connectivity-network-prod-${local.hub.location_short}-${random_string.suffix.result}"
   location = local.hub.location
@@ -36,7 +36,7 @@ module "network_resource_group" {
 # Adding NSGs only for the regular subnets
 
 module "nsg_shared_services_subnet" {
-  source = "../../shared-modules/network-security-group"
+  source = "../../shared-modules/resource-modules/network-security-group"
 
   name                = "acme-nsg-${replace(local.hub.subnets[3].name, "acme-", "")}"
   location            = local.hub.location
@@ -52,7 +52,7 @@ module "nsg_shared_services_subnet" {
 }
 
 module "nsg_nva" {
-  source = "../../shared-modules/network-security-group"
+  source = "../../shared-modules/resource-modules/network-security-group"
 
   name                = "acme-nsg-${replace(local.hub.subnets[4].name, "acme-", "")}"
   location            = local.hub.location
@@ -68,7 +68,7 @@ module "nsg_nva" {
 }
 
 module "nsg_management" {
-  source = "../../shared-modules/network-security-group"
+  source = "../../shared-modules/resource-modules/network-security-group"
 
   name                = "acme-nsg-${replace(local.hub.subnets[5].name, "acme-", "")}"
   location            = local.hub.location
@@ -88,7 +88,7 @@ module "nsg_management" {
 # Adding route tables for regular subnets
 
 module "rt_shared_services" {
-  source = "../../shared-modules/route-table"
+  source = "../../shared-modules/resource-modules/route-table"
 
   name                = "acme-rt-${replace(local.hub.subnets[3].name, "acme-", "")}"
   location            = local.hub.location
@@ -104,7 +104,7 @@ module "rt_shared_services" {
 }
 
 module "rt_nva" {
-  source = "../../shared-modules/route-table"
+  source = "../../shared-modules/resource-modules/route-table"
 
   name                = "acme-rt-${replace(local.hub.subnets[4].name, "acme-", "")}"
   location            = local.hub.location
@@ -120,7 +120,7 @@ module "rt_nva" {
 }
 
 module "rt_management" {
-  source = "../../shared-modules/route-table"
+  source = "../../shared-modules/resource-modules/route-table"
 
   name                = "acme-rt-${replace(local.hub.subnets[5].name, "acme-", "")}"
   location            = local.hub.location
@@ -137,7 +137,7 @@ module "rt_management" {
 
 # Hub Virtual Network
 module "hub_vnet" {
-  source = "../../shared-modules/virtual-network"
+  source = "../../shared-modules/resource-modules/virtual-network"
 
   name                = local.hub.vnet.name
   resource_group_name = module.network_resource_group.name

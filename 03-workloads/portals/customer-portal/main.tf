@@ -31,7 +31,7 @@ provider "azurerm" {
 # =============================================================================
 
 module "naming" {
-  source   = "../../../shared-modules/naming"
+  source   = "../../../shared-modules/utility-modules/naming"
   location = var.location
   suffix   = [var.landing_zone, var.workload_name, var.environment]
 }
@@ -62,7 +62,7 @@ locals {
 # =============================================================================
 
 module "resource_group" {
-  source = "../../../shared-modules/resource-group"
+  source = "../../../shared-modules/resource-modules/resource-group"
 
   name     = module.naming.resource_group.name_unique
   location = var.location
@@ -91,7 +91,7 @@ module "static_web_app" {
 
 module "application_insights" {
   count  = var.enable_application_insights ? 1 : 0
-  source = "../../../shared-modules/application-insights"
+  source = "../../../shared-modules/resource-modules/application-insights"
 
   name                = module.naming.application_insights.name_unique
   resource_group_name = module.resource_group.name

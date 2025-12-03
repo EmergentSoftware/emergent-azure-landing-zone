@@ -44,7 +44,7 @@ resource "azurerm_management_group_subscription_association" "connectivity" {
 # =============================================================================
 
 module "naming" {
-  source   = "../../shared-modules/naming"
+  source   = "../../shared-modules/utility-modules/naming"
   location = var.location
   suffix   = ["connectivity", "prod"]
 }

@@ -34,7 +34,7 @@ data "azurerm_management_group" "portals" {
 # =============================================================================
 
 module "naming" {
-  source   = "../../../shared-modules/naming"
+  source   = "../../../shared-modules/utility-modules/naming"
   location = var.location
   suffix   = ["portals", var.environment]
 }
@@ -62,35 +62,6 @@ resource "azurerm_management_group_subscription_association" "portal_dev" {
 }
 
 # =============================================================================
-# Networking Resources using AVM Wrapper Modules
-# =============================================================================
-
-# Resource Group for networking resources
-module "networking_resource_group" {
-  count  = var.create_virtual_network ? 1 : 0
-  source = "../../../shared-modules/resource-group"
-
-  name     = "${module.naming.resource_group.name}-net"
-  location = var.location
-  tags     = local.common_tags
-}
-
-# Virtual Network for portal applications
-module "virtual_network" {
-  count  = var.create_virtual_network ? 1 : 0
-  source = "../../../shared-modules/virtual-network"
-
-  name                = module.naming.virtual_network.name_unique
-  resource_group_name = module.networking_resource_group[0].name
-  location            = var.location
-  address_space       = var.vnet_address_space
-
-  subnets = var.vnet_subnets
-
-  dns_servers = var.vnet_dns_servers
-  tags        = local.common_tags
-}
-
 # =============================================================================
 # Monitoring Resources using AVM Wrapper Modules
 # =============================================================================
@@ -98,7 +69,7 @@ module "virtual_network" {
 # Resource Group for monitoring resources
 module "monitoring_resource_group" {
   count  = var.create_log_analytics ? 1 : 0
-  source = "../../../shared-modules/resource-group"
+  source = "../../../shared-modules/resource-modules/resource-group"
 
   name     = "${module.naming.resource_group.name}-mon"
   location = var.location
@@ -108,7 +79,7 @@ module "monitoring_resource_group" {
 # Log Analytics Workspace for portal dev diagnostics
 module "log_analytics_workspace" {
   count  = var.create_log_analytics ? 1 : 0
-  source = "../../../shared-modules/log-analytics-workspace"
+  source = "../../../shared-modules/resource-modules/log-analytics-workspace"
 
   name                = module.naming.log_analytics_workspace.name_unique
   resource_group_name = module.monitoring_resource_group[0].name

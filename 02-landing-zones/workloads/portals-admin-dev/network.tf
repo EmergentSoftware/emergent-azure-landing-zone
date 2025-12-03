@@ -4,169 +4,98 @@
 # Based on IPAM manifest: 02-landing-zones/ipam.yaml
 # =============================================================================
 
-# Load IPAM configuration
-locals {
-  ipam              = yamldecode(file("${path.module}/../../ipam.yaml"))
-  portals_admin_dev = local.ipam["portals-admin-dev"]
-}
-
 # Resource Group for Network
 resource "azurerm_resource_group" "network" {
   name     = "acme-rg-portals-admin-network-dev-${local.portals_admin_dev.location_short}"
   location = local.portals_admin_dev.location
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Network Infrastructure"
-      Application = "Admin Portal"
-      CreatedBy   = "Terraform"
-      ManagedBy   = "Terraform"
-      Environment = "Development"
-    }
-  )
+  tags     = local.network_tags
 }
 
 # Network Security Groups for Subnets
 module "nsg_app_subnet" {
-  source = "../../../shared-modules/network-security-group"
+  source = "../../../shared-modules/resource-modules/network-security-group"
 
   name                = "acme-nsg-${replace(local.portals_admin_dev.subnets[0].name, "acme-", "")}"
   location            = local.portals_admin_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Application Subnet NSG"
-      Application = "Admin Portal"
-      Environment = "Development"
-    }
-  )
+  tags = merge(local.network_tags, { Purpose = "Application Subnet NSG" })
 }
 
 module "nsg_private_endpoints_subnet" {
-  source = "../../../shared-modules/network-security-group"
+  source = "../../../shared-modules/resource-modules/network-security-group"
 
   name                = "acme-nsg-${replace(local.portals_admin_dev.subnets[1].name, "acme-", "")}"
   location            = local.portals_admin_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Private Endpoints Subnet NSG"
-      Application = "Admin Portal"
-      Environment = "Development"
-    }
-  )
+  tags = merge(local.network_tags, { Purpose = "Private Endpoints Subnet NSG" })
 }
 
 module "nsg_vnet_integration_subnet" {
-  source = "../../../shared-modules/network-security-group"
+  source = "../../../shared-modules/resource-modules/network-security-group"
 
   name                = "acme-nsg-${replace(local.portals_admin_dev.subnets[2].name, "acme-", "")}"
   location            = local.portals_admin_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "VNet Integration Subnet NSG"
-      Application = "Admin Portal"
-      Environment = "Development"
-    }
-  )
+  tags = merge(local.network_tags, { Purpose = "VNet Integration Subnet NSG" })
 }
 
 module "nsg_data_services_subnet" {
-  source = "../../../shared-modules/network-security-group"
+  source = "../../../shared-modules/resource-modules/network-security-group"
 
   name                = "acme-nsg-${replace(local.portals_admin_dev.subnets[3].name, "acme-", "")}"
   location            = local.portals_admin_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Data Services Subnet NSG"
-      Application = "Admin Portal"
-      Environment = "Development"
-    }
-  )
+  tags = merge(local.network_tags, { Purpose = "Data Services Subnet NSG" })
 }
 
 # Route Tables for Subnets
 module "rt_app_subnet" {
-  source = "../../../shared-modules/route-table"
+  source = "../../../shared-modules/resource-modules/route-table"
 
   name                = "acme-rt-${replace(local.portals_admin_dev.subnets[0].name, "acme-", "")}"
   location            = local.portals_admin_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Application Subnet Route Table"
-      Application = "Admin Portal"
-      Environment = "Development"
-    }
-  )
+  tags = merge(local.network_tags, { Purpose = "Application Subnet Route Table" })
 }
 
 module "rt_private_endpoints_subnet" {
-  source = "../../../shared-modules/route-table"
+  source = "../../../shared-modules/resource-modules/route-table"
 
   name                = "acme-rt-${replace(local.portals_admin_dev.subnets[1].name, "acme-", "")}"
   location            = local.portals_admin_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Private Endpoints Subnet Route Table"
-      Application = "Admin Portal"
-      Environment = "Development"
-    }
-  )
+  tags = merge(local.network_tags, { Purpose = "Private Endpoints Subnet Route Table" })
 }
 
 module "rt_vnet_integration_subnet" {
-  source = "../../../shared-modules/route-table"
+  source = "../../../shared-modules/resource-modules/route-table"
 
   name                = "acme-rt-${replace(local.portals_admin_dev.subnets[2].name, "acme-", "")}"
   location            = local.portals_admin_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "VNet Integration Subnet Route Table"
-      Application = "Admin Portal"
-      Environment = "Development"
-    }
-  )
+  tags = merge(local.network_tags, { Purpose = "VNet Integration Subnet Route Table" })
 }
 
 module "rt_data_services_subnet" {
-  source = "../../../shared-modules/route-table"
+  source = "../../../shared-modules/resource-modules/route-table"
 
   name                = "acme-rt-${replace(local.portals_admin_dev.subnets[3].name, "acme-", "")}"
   location            = local.portals_admin_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Data Services Subnet Route Table"
-      Application = "Admin Portal"
-      Environment = "Development"
-    }
-  )
+  tags = merge(local.network_tags, { Purpose = "Data Services Subnet Route Table" })
 }
 
 # Portals Admin Dev Virtual Network
 module "portals_vnet" {
-  source = "../../../shared-modules/virtual-network"
+  source = "../../../shared-modules/resource-modules/virtual-network"
 
   name                = local.portals_admin_dev.vnet.name
   resource_group_name = azurerm_resource_group.network.name
@@ -253,15 +182,7 @@ module "portals_vnet" {
     }
   }
 
-  tags = merge(
-    var.tags,
-    {
-      Purpose     = "Admin Portal Spoke VNet"
-      Environment = "Development"
-      Application = "Admin Portal"
-      IPAM        = "Managed via 02-landing-zones/ipam.yaml"
-    }
-  )
+  tags = merge(local.network_tags, { Purpose = "Admin Portal Spoke VNet" })
 
   depends_on = [azurerm_resource_group.network]
 }

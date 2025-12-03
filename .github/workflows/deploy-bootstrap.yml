@@ -91,7 +91,32 @@ jobs:
 
             // Extract plan summary
             const planMatch = planOutput.match(/Plan: (\d+) to add, (\d+) to change, (\d+) to destroy/);
-            const summary = planMatch ? `**${planMatch[1]}** to add, **${planMatch[2]}** to change, **${planMatch[3]}** to destroy` : 'See plan output below';
+            const toAdd = planMatch ? planMatch[1] : '0';
+            const toChange = planMatch ? planMatch[2] : '0';
+            const toDestroy = planMatch ? planMatch[3] : '0';
+            const summary = `+${toAdd} to add, ~${toChange} to change, -${toDestroy} to destroy`;
+
+            // Extract resource changes
+            const lines = planOutput.split('\n');
+            let resourceChanges = [];
+            let inChanges = false;
+            
+            for (const line of lines) {
+              if (line.includes('Terraform will perform the following actions:')) {
+                inChanges = true;
+                continue;
+              }
+              if (inChanges && line.match(/^Plan:/)) {
+                break;
+              }
+              if (inChanges && line.trim() && !line.includes('───')) {
+                resourceChanges.push(line);
+              }
+            }
+
+            const resourceSection = resourceChanges.length > 0 
+              ? `\n<details>\n<summary>📦 Resource Changes</summary>\n\n\`\`\`terraform\n${resourceChanges.join('\n')}\n\`\`\`\n</details>\n`
+              : '';
 
             const issueBody = `## 🚀 Bootstrap Deployment Approval Required
 
@@ -101,10 +126,10 @@ jobs:
             **Workflow Run:** [View Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
             ### Plan Summary
-            ${summary}
-
+            **${summary}**
+            ${resourceSection}
             <details>
-            <summary>📋 Full Terraform Plan</summary>
+            <summary>📋 Full Terraform Plan Output</summary>
 
             \`\`\`terraform
             ${planOutput}
@@ -115,17 +140,17 @@ jobs:
 
             ### ✅ Approval Instructions
 
-            To approve this deployment, add a comment with:
+            To **approve** this deployment, add a comment with:
             \`\`\`
             /approve
             \`\`\`
 
-            To reject this deployment, add a comment with:
+            To **reject** this deployment, add a comment with:
             \`\`\`
             /reject
             \`\`\`
 
-            **Note:** The apply job will wait for approval before proceeding.
+            **⏱️ Note:** The deployment will wait up to 60 minutes for approval before timing out.
             `;
 
             const issue = await github.rest.issues.create({

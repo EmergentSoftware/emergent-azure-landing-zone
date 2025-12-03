@@ -1,0 +1,804 @@
+name: Deploy All Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_bootstrap:
+        description: 'Deploy Bootstrap (step 0)'
+        required: true
+        type: boolean
+        default: false
+      deploy_foundation:
+        description: 'Deploy Foundation (step 1)'
+        required: true
+        type: boolean
+        default: true
+      deploy_connectivity:
+        description: 'Deploy Connectivity (step 2a)'
+        required: true
+        type: boolean
+        default: true
+      deploy_identity:
+        description: 'Deploy Identity (step 2b)'
+        required: true
+        type: boolean
+        default: true
+      deploy_management:
+        description: 'Deploy Management (step 2c)'
+        required: true
+        type: boolean
+        default: true
+      deploy_workload_lzs:
+        description: 'Deploy Workload Landing Zones (step 3)'
+        required: true
+        type: boolean
+        default: true
+      deploy_workloads:
+        description: 'Deploy Workloads (step 4)'
+        required: true
+        type: boolean
+        default: false
+      auto_approve:
+        description: 'Auto-approve all deployments (skip manual approval)'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+jobs:
+  # Step 0: Bootstrap
+  bootstrap:
+    name: '0. Bootstrap'
+    runs-on: ubuntu-latest
+    if: inputs.deploy_bootstrap
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create terraform.tfvars
+        working-directory: 00-bootstrap
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 00-bootstrap
+        env:
+          ARM_USE_CLI: true
+        run: |
+          if [ -f "backend.tfbackend" ]; then
+            terraform init -backend-config="backend.tfbackend"
+          else
+            terraform init
+          fi
+
+      - name: Terraform Plan
+        working-directory: 00-bootstrap
+        env:
+          ARM_USE_CLI: true
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 00-bootstrap
+        env:
+          ARM_USE_CLI: true
+        run: terraform apply -auto-approve tfplan
+
+  # Step 1: Foundation
+  foundation:
+    name: '1. Foundation'
+    runs-on: ubuntu-latest
+    needs: bootstrap
+    if: |
+      always() &&
+      (needs.bootstrap.result == 'success' || needs.bootstrap.result == 'skipped') &&
+      inputs.deploy_foundation
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create terraform.tfvars
+        working-directory: 01-foundation
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 01-foundation
+        env:
+          ARM_USE_CLI: true
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 01-foundation
+        env:
+          ARM_USE_CLI: true
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 01-foundation
+        env:
+          ARM_USE_CLI: true
+        run: terraform apply -auto-approve tfplan
+
+  # Step 2a: Connectivity
+  connectivity:
+    name: '2a. Connectivity'
+    runs-on: ubuntu-latest
+    needs: foundation
+    if: |
+      always() &&
+      needs.foundation.result == 'success' &&
+      inputs.deploy_connectivity
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUB_CONNECTIVITY }}
+
+      - name: Create terraform.tfvars
+        working-directory: 02-landing-zones/connectivity
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUB_CONNECTIVITY }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 02-landing-zones/connectivity
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_CONNECTIVITY }}
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 02-landing-zones/connectivity
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_CONNECTIVITY }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 02-landing-zones/connectivity
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_CONNECTIVITY }}
+        run: terraform apply -auto-approve tfplan
+
+  # Step 2b: Identity
+  identity:
+    name: '2b. Identity'
+    runs-on: ubuntu-latest
+    needs: foundation
+    if: |
+      always() &&
+      needs.foundation.result == 'success' &&
+      inputs.deploy_identity
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUB_IDENTITY }}
+
+      - name: Create terraform.tfvars
+        working-directory: 02-landing-zones/identity
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUB_IDENTITY }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 02-landing-zones/identity
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_IDENTITY }}
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 02-landing-zones/identity
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_IDENTITY }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 02-landing-zones/identity
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_IDENTITY }}
+        run: terraform apply -auto-approve tfplan
+
+  # Step 2c: Management
+  management:
+    name: '2c. Management'
+    runs-on: ubuntu-latest
+    needs: foundation
+    if: |
+      always() &&
+      needs.foundation.result == 'success' &&
+      inputs.deploy_management
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUB_MANAGEMENT }}
+
+      - name: Create terraform.tfvars
+        working-directory: 02-landing-zones/management
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUB_MANAGEMENT }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 02-landing-zones/management
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_MANAGEMENT }}
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 02-landing-zones/management
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_MANAGEMENT }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 02-landing-zones/management
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_MANAGEMENT }}
+        run: terraform apply -auto-approve tfplan
+
+  # Step 3: Workload Landing Zones (parallel)
+  workload-lz-admin-dev:
+    name: '3. Workload LZ - Admin Dev'
+    runs-on: ubuntu-latest
+    needs: [connectivity, identity, management]
+    if: |
+      always() &&
+      needs.connectivity.result == 'success' &&
+      needs.identity.result == 'success' &&
+      needs.management.result == 'success' &&
+      inputs.deploy_workload_lzs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}
+
+      - name: Create terraform.tfvars
+        working-directory: 02-landing-zones/workloads/portals-admin-dev
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 02-landing-zones/workloads/portals-admin-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 02-landing-zones/workloads/portals-admin-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 02-landing-zones/workloads/portals-admin-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}
+        run: terraform apply -auto-approve tfplan
+
+  workload-lz-admin-prod:
+    name: '3. Workload LZ - Admin Prod'
+    runs-on: ubuntu-latest
+    needs: [connectivity, identity, management]
+    if: |
+      always() &&
+      needs.connectivity.result == 'success' &&
+      needs.identity.result == 'success' &&
+      needs.management.result == 'success' &&
+      inputs.deploy_workload_lzs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}
+
+      - name: Create terraform.tfvars
+        working-directory: 02-landing-zones/workloads/portals-admin-prod
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 02-landing-zones/workloads/portals-admin-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 02-landing-zones/workloads/portals-admin-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 02-landing-zones/workloads/portals-admin-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}
+        run: terraform apply -auto-approve tfplan
+
+  workload-lz-customer-dev:
+    name: '3. Workload LZ - Customer Dev'
+    runs-on: ubuntu-latest
+    needs: [connectivity, identity, management]
+    if: |
+      always() &&
+      needs.connectivity.result == 'success' &&
+      needs.identity.result == 'success' &&
+      needs.management.result == 'success' &&
+      inputs.deploy_workload_lzs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}
+
+      - name: Create terraform.tfvars
+        working-directory: 02-landing-zones/workloads/portals-customer-dev
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 02-landing-zones/workloads/portals-customer-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 02-landing-zones/workloads/portals-customer-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 02-landing-zones/workloads/portals-customer-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}
+        run: terraform apply -auto-approve tfplan
+
+  workload-lz-customer-prod:
+    name: '3. Workload LZ - Customer Prod'
+    runs-on: ubuntu-latest
+    needs: [connectivity, identity, management]
+    if: |
+      always() &&
+      needs.connectivity.result == 'success' &&
+      needs.identity.result == 'success' &&
+      needs.management.result == 'success' &&
+      inputs.deploy_workload_lzs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}
+
+      - name: Create terraform.tfvars
+        working-directory: 02-landing-zones/workloads/portals-customer-prod
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 02-landing-zones/workloads/portals-customer-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 02-landing-zones/workloads/portals-customer-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 02-landing-zones/workloads/portals-customer-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}
+        run: terraform apply -auto-approve tfplan
+
+  # Step 4: Workloads (parallel)
+  workload-admin-portal-dev:
+    name: '4. Workload - Admin Portal Dev'
+    runs-on: ubuntu-latest
+    needs: [workload-lz-admin-dev]
+    if: |
+      always() &&
+      needs.workload-lz-admin-dev.result == 'success' &&
+      inputs.deploy_workloads
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}
+
+      - name: Create terraform.tfvars
+        working-directory: 03-workloads/portals/admin-portal-dev
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 03-workloads/portals/admin-portal-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 03-workloads/portals/admin-portal-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 03-workloads/portals/admin-portal-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}
+        run: terraform apply -auto-approve tfplan
+
+  workload-admin-portal-prod:
+    name: '4. Workload - Admin Portal Prod'
+    runs-on: ubuntu-latest
+    needs: [workload-lz-admin-prod]
+    if: |
+      always() &&
+      needs.workload-lz-admin-prod.result == 'success' &&
+      inputs.deploy_workloads
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}
+
+      - name: Create terraform.tfvars
+        working-directory: 03-workloads/portals/admin-portal-prod
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 03-workloads/portals/admin-portal-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 03-workloads/portals/admin-portal-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 03-workloads/portals/admin-portal-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}
+        run: terraform apply -auto-approve tfplan
+
+  workload-customer-portal-dev:
+    name: '4. Workload - Customer Portal Dev'
+    runs-on: ubuntu-latest
+    needs: [workload-lz-customer-dev]
+    if: |
+      always() &&
+      needs.workload-lz-customer-dev.result == 'success' &&
+      inputs.deploy_workloads
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}
+
+      - name: Create terraform.tfvars
+        working-directory: 03-workloads/portals/customer-portal-dev
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 03-workloads/portals/customer-portal-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 03-workloads/portals/customer-portal-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 03-workloads/portals/customer-portal-dev
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}
+        run: terraform apply -auto-approve tfplan
+
+  workload-customer-portal-prod:
+    name: '4. Workload - Customer Portal Prod'
+    runs-on: ubuntu-latest
+    needs: [workload-lz-customer-prod]
+    if: |
+      always() &&
+      needs.workload-lz-customer-prod.result == 'success' &&
+      inputs.deploy_workloads
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}
+
+      - name: Create terraform.tfvars
+        working-directory: 03-workloads/portals/customer-portal-prod
+        run: |
+          cat > terraform.tfvars << EOF
+          subscription_id = "${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 03-workloads/portals/customer-portal-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}
+        run: terraform init -backend-config="backend.tfbackend"
+
+      - name: Terraform Plan
+        working-directory: 03-workloads/portals/customer-portal-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan
+
+      - name: Terraform Apply
+        if: inputs.auto_approve
+        working-directory: 03-workloads/portals/customer-portal-prod
+        env:
+          ARM_USE_CLI: true
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}
+        run: terraform apply -auto-approve tfplan
+
+  summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs:
+      - bootstrap
+      - foundation
+      - connectivity
+      - identity
+      - management
+      - workload-lz-admin-dev
+      - workload-lz-admin-prod
+      - workload-lz-customer-dev
+      - workload-lz-customer-prod
+      - workload-admin-portal-dev
+      - workload-admin-portal-prod
+      - workload-customer-portal-dev
+      - workload-customer-portal-prod
+    if: always()
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "# Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Layer | Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 0 | Bootstrap | ${{ needs.bootstrap.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 1 | Foundation | ${{ needs.foundation.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 2a | Connectivity | ${{ needs.connectivity.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 2b | Identity | ${{ needs.identity.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 2c | Management | ${{ needs.management.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 3 | Workload LZ - Admin Dev | ${{ needs.workload-lz-admin-dev.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 3 | Workload LZ - Admin Prod | ${{ needs.workload-lz-admin-prod.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 3 | Workload LZ - Customer Dev | ${{ needs.workload-lz-customer-dev.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 3 | Workload LZ - Customer Prod | ${{ needs.workload-lz-customer-prod.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 4 | Admin Portal Dev | ${{ needs.workload-admin-portal-dev.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 4 | Admin Portal Prod | ${{ needs.workload-admin-portal-prod.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 4 | Customer Portal Dev | ${{ needs.workload-customer-portal-dev.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 4 | Customer Portal Prod | ${{ needs.workload-customer-portal-prod.result }} |" >> $GITHUB_STEP_SUMMARY

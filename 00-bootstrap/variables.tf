@@ -7,6 +7,11 @@ variable "subscription_id" {
   type        = string
 }
 
+variable "tenant_id" {
+  description = "Azure AD tenant ID"
+  type        = string
+}
+
 variable "resource_group_name" {
   description = "Name of the resource group for Terraform state storage"
   type        = string
@@ -84,8 +89,11 @@ variable "tags" {
   description = "Additional tags to apply to resources"
   type        = map(string)
   default = {
-    Project = "Azure Landing Zone"
-    Owner   = "Platform Team"
+    Project    = "Azure Landing Zone"
+    Owner      = "Platform Team"
+    ManagedBy  = "Terraform"
+    CostCenter = "Infrastructure"
+    Purpose    = "Terraform State Storage"
   }
 }
 

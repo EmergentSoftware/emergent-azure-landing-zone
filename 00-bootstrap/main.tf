@@ -2,6 +2,13 @@
 # Bootstrap: Terraform State Storage
 # This configuration creates the Azure Storage Account and containers
 # for storing Terraform state files for the Azure Landing Zone deployment
+#
+# IMPORTANT: Initial Deployment Process
+# 1. First deployment uses LOCAL state (comment out the backend block)
+# 2. Run: terraform init && terraform apply
+# 3. This creates the storage account and tfstate-bootstrap container
+# 4. Uncomment the backend block and run: terraform init -backend-config="backend.tfbackend" -migrate-state
+# 5. Subsequent updates will use REMOTE state in Azure Storage
 # =============================================================================
 
 terraform {
@@ -13,8 +20,13 @@ terraform {
     }
   }
 
-  # Bootstrap uses local state - this is the only layer without remote state
-  # After this runs, all other layers will use the storage account created here
+  backend "azurerm" {
+    # Backend configuration will be provided via backend config file
+    # Run: terraform init -backend-config="backend.tfbackend"
+    # 
+    # NOTE: Comment out this entire backend block for initial deployment,
+    # then uncomment and migrate state after storage account is created
+  }
 }
 
 provider "azurerm" {

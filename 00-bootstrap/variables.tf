@@ -62,6 +62,7 @@ variable "containers" {
   description = "List of blob container names to create for Terraform state storage"
   type        = list(string)
   default = [
+    "tfstate-bootstrap",
     "tfstate-foundation",
     "tfstate-connectivity",
     "tfstate-identity",

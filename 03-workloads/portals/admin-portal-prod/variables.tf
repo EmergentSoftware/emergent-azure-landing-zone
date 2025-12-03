@@ -21,7 +21,7 @@ variable "workload_name" {
 variable "environment" {
   description = "Environment name (dev, test, prod)"
   type        = string
-  default     = "dev"
+  default     = "prod"
 
   validation {
     condition     = contains(["dev", "test", "prod"], var.environment)
@@ -48,7 +48,7 @@ variable "storage_account_tier" {
 variable "storage_replication_type" {
   description = "Storage account replication type (LRS, GRS, RAGRS, ZRS, GZRS, RAGZRS)"
   type        = string
-  default     = "LRS"
+  default     = "GRS"
 }
 
 # =============================================================================

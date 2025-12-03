@@ -1,0 +1,343 @@
+name: Deploy Bootstrap
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '00-bootstrap/**'
+      - '.github/workflows/deploy-bootstrap.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+jobs:
+  plan:
+    name: Plan Bootstrap Infrastructure
+    runs-on: ubuntu-latest
+    outputs:
+      plan_outcome: ${{ steps.plan.outcome }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create terraform.tfvars
+        working-directory: 00-bootstrap
+        run: |
+          cat > terraform.tfvars << EOF
+          # =============================================================================
+          # Bootstrap Configuration
+          # =============================================================================
+
+          subscription_id = "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 00-bootstrap
+        env:
+          ARM_USE_CLI: true
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          if [ -f "backend.tfbackend" ]; then
+            echo "Initializing with backend configuration..."
+            terraform init -backend-config="backend.tfbackend"
+          else
+            echo "Initializing without backend configuration..."
+            terraform init
+          fi
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: 00-bootstrap
+        env:
+          ARM_USE_CLI: true
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: terraform plan -var-file="terraform.tfvars" -out=tfplan -no-color 2>&1 | tee plan_output.txt
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bootstrap-tfplan
+          path: |
+            00-bootstrap/tfplan
+            00-bootstrap/plan_output.txt
+          retention-days: 5
+
+      - name: Create Approval Issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const planOutput = fs.readFileSync('00-bootstrap/plan_output.txt', 'utf8');
+
+            // Extract plan summary
+            const planMatch = planOutput.match(/Plan: (\d+) to add, (\d+) to change, (\d+) to destroy/);
+            const summary = planMatch ? `**${planMatch[1]}** to add, **${planMatch[2]}** to change, **${planMatch[3]}** to destroy` : 'See plan output below';
+
+            const issueBody = `## 🚀 Bootstrap Deployment Approval Required
+
+            **Triggered by:** @${{ github.actor }}
+            **Branch:** \`${{ github.ref_name }}\`
+            **Commit:** \`${{ github.sha }}\`
+            **Workflow Run:** [View Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            ### Plan Summary
+            ${summary}
+
+            <details>
+            <summary>📋 Full Terraform Plan</summary>
+
+            \`\`\`terraform
+            ${planOutput}
+            \`\`\`
+            </details>
+
+            ---
+
+            ### ✅ Approval Instructions
+
+            To approve this deployment, add a comment with:
+            \`\`\`
+            /approve
+            \`\`\`
+
+            To reject this deployment, add a comment with:
+            \`\`\`
+            /reject
+            \`\`\`
+
+            **Note:** The apply job will wait for approval before proceeding.
+            `;
+
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[Deploy] Bootstrap Infrastructure - ${new Date().toISOString().split('T')[0]}`,
+              body: issueBody,
+              labels: ['deployment', 'approval-required']
+            });
+
+            // Save issue number for the apply job
+            fs.writeFileSync('issue_number.txt', issue.data.number.toString());
+
+      - name: Upload Issue Number
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-number
+          path: issue_number.txt
+          retention-days: 1
+
+  wait-for-approval:
+    name: Wait for Approval
+    runs-on: ubuntu-latest
+    needs: plan
+    if: needs.plan.outputs.plan_outcome == 'success'
+    outputs:
+      approved: ${{ steps.check-approval.outputs.approved }}
+    steps:
+      - name: Download Issue Number
+        uses: actions/download-artifact@v4
+        with:
+          name: issue-number
+
+      - name: Wait and Check for Approval
+        id: check-approval
+        uses: actions/github-script@v7
+        timeout-minutes: 60
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const issueNumber = parseInt(fs.readFileSync('issue_number.txt', 'utf8').trim());
+
+            console.log(`Waiting for approval on issue #${issueNumber}...`);
+
+            const maxWaitMinutes = 60;
+            const checkIntervalMs = 30000; // 30 seconds
+            const maxIterations = (maxWaitMinutes * 60 * 1000) / checkIntervalMs;
+
+            for (let i = 0; i < maxIterations; i++) {
+              const comments = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber
+              });
+
+              for (const comment of comments.data) {
+                const body = comment.body.toLowerCase().trim();
+
+                if (body === '/approve') {
+                  console.log(`Approval received from @${comment.user.login}`);
+
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    body: `✅ Deployment approved by @${comment.user.login}. Proceeding with apply...`
+                  });
+
+                  await github.rest.issues.update({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    state: 'closed',
+                    labels: ['deployment', 'approved']
+                  });
+
+                  core.setOutput('approved', 'true');
+                  return;
+                }
+
+                if (body === '/reject') {
+                  console.log(`Deployment rejected by @${comment.user.login}`);
+
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    body: `❌ Deployment rejected by @${comment.user.login}. Workflow stopped.`
+                  });
+
+                  await github.rest.issues.update({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    state: 'closed',
+                    labels: ['deployment', 'rejected']
+                  });
+
+                  core.setFailed('Deployment rejected');
+                  return;
+                }
+              }
+
+              console.log(`Waiting... (${i + 1}/${maxIterations})`);
+              await new Promise(resolve => setTimeout(resolve, checkIntervalMs));
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: '⏱️ Approval timeout (60 minutes). Deployment cancelled.'
+            });
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              state: 'closed',
+              labels: ['deployment', 'timeout']
+            });
+
+            core.setFailed('Approval timeout');
+
+  deploy:
+    name: Deploy Bootstrap Infrastructure
+    runs-on: ubuntu-latest
+    needs: wait-for-approval
+    if: success()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.12.0"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bootstrap-tfplan
+          path: 00-bootstrap
+
+      - name: Create terraform.tfvars
+        working-directory: 00-bootstrap
+        run: |
+          cat > terraform.tfvars << EOF
+          # =============================================================================
+          # Bootstrap Configuration
+          # =============================================================================
+
+          subscription_id = "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          tenant_id       = "${{ secrets.AZURE_TENANT_ID }}"
+          EOF
+
+      - name: Terraform Init
+        working-directory: 00-bootstrap
+        env:
+          ARM_USE_CLI: true
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          if [ -f "backend.tfbackend" ]; then
+            echo "Initializing with backend configuration..."
+            terraform init -backend-config="backend.tfbackend"
+          else
+            echo "Initializing without backend configuration..."
+            terraform init
+          fi
+
+      - name: Terraform Apply
+        working-directory: 00-bootstrap
+        env:
+          ARM_USE_CLI: true
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Upload Terraform State
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bootstrap-terraform-state
+          path: 00-bootstrap/terraform.tfstate*
+          retention-days: 30
+
+      - name: Download Issue Number
+        uses: actions/download-artifact@v4
+        with:
+          name: issue-number
+
+      - name: Post Deployment Success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const issueNumber = parseInt(fs.readFileSync('issue_number.txt', 'utf8').trim());
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: '🎉 Deployment completed successfully!'
+            });

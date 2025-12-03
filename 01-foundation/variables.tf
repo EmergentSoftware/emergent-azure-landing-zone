@@ -21,7 +21,7 @@ variable "default_location" {
 variable "security_contact_email" {
   description = "Email address for security contact notifications"
   type        = string
-  default     = "security@acme.com"
+  default     = "joshd@acmecorporation.dev"
 }
 
 variable "log_analytics_workspace_id" {
@@ -35,9 +35,7 @@ variable "allowed_locations" {
   type        = list(string)
   default = [
     "eastus",
-    "eastus2",
     "centralus",
-    "westus2"
   ]
 }
 

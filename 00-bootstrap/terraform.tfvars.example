@@ -1,36 +1,6 @@
 # =============================================================================
-# Bootstrap Configuration Example
-# Copy this file to terraform.tfvars and update with your values
+# Bootstrap Configuration
 # =============================================================================
 
-# Azure subscription ID
 subscription_id = "00000000-0000-0000-0000-000000000000"
-
-# Resource group name for state storage
-resource_group_name = "rg-terraform-state"
-
-# Azure region
-location = "eastus"
-
-# Storage account prefix (random suffix will be added)
-storage_account_prefix = "tfstate"
-
-# Replication type: LRS (cheapest), GRS (geo-redundant), ZRS (zone-redundant)
-storage_account_replication = "LRS"
-
-# Soft delete retention (days)
-soft_delete_retention_days = 30
-
-# Environment
-environment = "prod"
-
-# Additional containers (optional)
-# additional_containers = ["tfstate-sandbox", "tfstate-dev"]
-
-# Tags
-tags = {
-  Project     = "Azure Landing Zone"
-  Owner       = "Platform Team"
-  ManagedBy   = "Terraform"
-  CostCenter  = "Infrastructure"
-}
+tenant_id       = "00000000-0000-0000-0000-000000000000"

@@ -15,7 +15,8 @@ The bootstrap creates:
 ## ⚠️ Important Notes
 
 - **Run this FIRST** before deploying any other layers
-- **Uses local state** - This is the only layer that doesn't use remote state
+- **Initial deployment uses LOCAL state** - Comment out the backend block in main.tf for first run
+- **After creation, migrate to REMOTE state** - Uncomment backend block and migrate state
 - **One-time setup** - Rarely needs to be run again
 - **Storage account name** is globally unique (random suffix added automatically)
 
@@ -36,27 +37,37 @@ location        = "eastus"
 environment     = "prod"
 ```
 
-### 2. Initialize Terraform
+### 2. Initial Deployment (Local State)
+
+**IMPORTANT:** For the first deployment, comment out the `backend "azurerm"` block in `main.tf`
 
 ```powershell
+# Initialize with local backend
 terraform init
+
+# Review plan
+terraform plan -var-file="terraform.tfvars"
+
+# Deploy (creates storage account and containers)
+terraform apply -var-file="terraform.tfvars"
 ```
 
-### 3. Review Plan
+### 3. Migrate to Remote State
+
+After the storage account and `tfstate-bootstrap` container are created:
 
 ```powershell
-terraform plan
+# Uncomment the backend "azurerm" block in main.tf
+
+# Migrate state from local to remote
+terraform init -backend-config="backend.tfbackend" -migrate-state
 ```
 
-### 4. Deploy
+Answer `yes` when prompted to copy state to the new backend.
 
-```powershell
-terraform apply
-```
+### 4. Save Outputs
 
-### 5. Save Outputs
-
-After deployment, save the backend configuration:
+After migration, save the backend configuration:
 
 ```powershell
 # Display instructions

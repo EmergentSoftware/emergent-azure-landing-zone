@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  id-token: write
 
 jobs:
   find-changed-dirs:
@@ -76,6 +77,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -104,7 +112,14 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: terraform init -backend=false
+        run: |
+          if [ -f "backend.tfbackend" ]; then
+            echo "Found backend config, initializing with backend"
+            terraform init -backend-config="backend.tfbackend"
+          else
+            echo "No backend config, initializing without backend"
+            terraform init -backend=false
+          fi
         working-directory: ${{ matrix.directory }}
         continue-on-error: true
 
@@ -128,13 +143,50 @@ jobs:
         run: |
           if [ -f "${{ matrix.directory }}/terraform.tfvars.example" ]; then
             cp "${{ matrix.directory }}/terraform.tfvars.example" "${{ matrix.directory }}/terraform.tfvars"
+
+            # Determine subscription ID based on directory path
+            SUBSCRIPTION_ID="${{ secrets.AZURE_SUBSCRIPTION_ID }}"  # default
+
+            case "${{ matrix.directory }}" in
+              *"02-landing-zones/management")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_MANAGEMENT }}"
+                ;;
+              *"02-landing-zones/identity")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_IDENTITY }}"
+                ;;
+              *"02-landing-zones/connectivity")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_CONNECTIVITY }}"
+                ;;
+              *"portals-admin-dev")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}"
+                ;;
+              *"portals-admin-prod")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}"
+                ;;
+              *"portals-customer-dev")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}"
+                ;;
+              *"portals-customer-prod")
+                SUBSCRIPTION_ID="${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}"
+                ;;
+            esac
+
+            # Replace placeholder values with real values
+            sed -i "s/subscription_id = \"00000000-0000-0000-0000-000000000000\"/subscription_id = \"$SUBSCRIPTION_ID\"/g" "${{ matrix.directory }}/terraform.tfvars"
+            sed -i 's/tenant_id = "00000000-0000-0000-0000-000000000000"/tenant_id = "${{ secrets.AZURE_TENANT_ID }}"/g' "${{ matrix.directory }}/terraform.tfvars"
+
             echo "has_tfvars=true" >> $GITHUB_OUTPUT
+            echo "subscription_id=$SUBSCRIPTION_ID" >> $GITHUB_OUTPUT
           else
             echo "has_tfvars=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Terraform Plan
         id: plan
+        env:
+          ARM_USE_CLI: true
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ steps.check-tfvars.outputs.subscription_id || secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
           if [ -f "terraform.tfvars" ]; then
             terraform plan -var-file="terraform.tfvars" -no-color -out=tfplan 2>&1 | tee plan_output.txt
@@ -147,27 +199,47 @@ jobs:
       - name: Generate plan summary
         id: plan-summary
         if: always()
+        shell: bash
         run: |
           PLAN_FILE="${{ matrix.directory }}/plan_output.txt"
-          if [ -f "$PLAN_FILE" ]; then
-            ADD=$(grep -c "will be created" "$PLAN_FILE" || echo "0")
-            CHANGE=$(grep -c "will be updated" "$PLAN_FILE" || echo "0")
-            DESTROY=$(grep -c "will be destroyed" "$PLAN_FILE" || echo "0")
 
-            echo "add=$ADD" >> $GITHUB_OUTPUT
-            echo "change=$CHANGE" >> $GITHUB_OUTPUT
-            echo "destroy=$DESTROY" >> $GITHUB_OUTPUT
-          else
-            echo "add=0" >> $GITHUB_OUTPUT
-            echo "change=0" >> $GITHUB_OUTPUT
-            echo "destroy=0" >> $GITHUB_OUTPUT
+          # Initialize counters
+          ADD=0
+          CHANGE=0
+          DESTROY=0
+
+          if [ -f "$PLAN_FILE" ]; then
+            # Count occurrences
+            ADD=$(grep -c "will be created" "$PLAN_FILE" 2>/dev/null || echo "0")
+            CHANGE=$(grep -c "will be updated" "$PLAN_FILE" 2>/dev/null || echo "0")
+            DESTROY=$(grep -c "will be destroyed" "$PLAN_FILE" 2>/dev/null || echo "0")
           fi
+
+          # Ensure clean numeric values (strip any whitespace)
+          ADD=$(echo "$ADD" | tr -d '[:space:]')
+          CHANGE=$(echo "$CHANGE" | tr -d '[:space:]')
+          DESTROY=$(echo "$DESTROY" | tr -d '[:space:]')
+
+          # Write to GITHUB_OUTPUT
+          echo "add=${ADD}" >> "${GITHUB_OUTPUT}"
+          echo "change=${CHANGE}" >> "${GITHUB_OUTPUT}"
+          echo "destroy=${DESTROY}" >> "${GITHUB_OUTPUT}"
 
       - name: Set Output
         id: set-output
         if: always()
+        shell: bash
         run: |
-          echo "result=${{ matrix.directory }}|${{ steps.fmt.outcome }}|${{ steps.init.outcome }}|${{ steps.validate.outcome }}|${{ steps.plan.outcome }}|${{ steps.plan-summary.outputs.add }}|${{ steps.plan-summary.outputs.change }}|${{ steps.plan-summary.outputs.destroy }}" >> $GITHUB_OUTPUT
+          RESULT="${{ matrix.directory }}|${{ steps.fmt.outcome }}|${{ steps.init.outcome }}|${{ steps.validate.outcome }}|${{ steps.plan.outcome }}|${{ steps.plan-summary.outputs.add }}|${{ steps.plan-summary.outputs.change }}|${{ steps.plan-summary.outputs.destroy }}"
+          echo "result=${RESULT}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload plan output
+        if: steps.plan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: plan-output-${{ hashFiles(matrix.directory) }}
+          path: ${{ matrix.directory }}/plan_output.txt
+          retention-days: 5
 
       - name: Upload plan artifact
         if: steps.plan.outcome == 'success'
@@ -183,16 +255,26 @@ jobs:
     needs: terraform-check
     if: github.event_name == 'pull_request'
     steps:
+      - name: Download plan outputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: plan-output-*
+          path: plan-outputs
+          merge-multiple: true
+
       - name: Post Summary Comment
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const fs = require('fs');
+            const path = require('path');
             const results = `${{ join(needs.terraform-check.outputs.*, '\n') }}`.split('\n').filter(r => r);
 
             let passed = 0;
             let failed = 0;
             let details = '| Directory | Format | Init | Validate | Plan | Changes |\n|-----------|--------|------|----------|------|----------|\n';
+            let planDetails = '';
 
             results.forEach(result => {
               if (!result) return;
@@ -206,7 +288,27 @@ jobs:
               if (plan === 'success') {
                 const total = parseInt(add || 0) + parseInt(change || 0) + parseInt(destroy || 0);
                 if (total > 0) {
-                  changesSummary = `🟢${add} 🟡${change} 🔴${destroy}`;
+                  const parts = [];
+                  if (parseInt(add || 0) > 0) parts.push(`+${add} to add`);
+                  if (parseInt(change || 0) > 0) parts.push(`~${change} to change`);
+                  if (parseInt(destroy || 0) > 0) parts.push(`-${destroy} to destroy`);
+                  changesSummary = parts.join(', ');
+
+                  // Try to read plan output file
+                  try {
+                    const planFiles = fs.readdirSync('plan-outputs');
+                    const planFile = planFiles.find(f => f.includes('plan_output.txt'));
+                    if (planFile) {
+                      const planContent = fs.readFileSync(path.join('plan-outputs', planFile), 'utf8');
+                      // Extract the plan section (between "Terraform will perform" and "Plan:")
+                      const planMatch = planContent.match(/Terraform will perform the following actions:([\s\S]*?)(?:Plan:|─{5,})/);
+                      if (planMatch) {
+                        planDetails += `\n<details>\n<summary>📋 Plan for <code>${dir}</code></summary>\n\n\`\`\`terraform\n${planMatch[1].trim()}\n\`\`\`\n</details>\n`;
+                      }
+                    }
+                  } catch (e) {
+                    // Silently ignore if plan file not found
+                  }
                 } else {
                   changesSummary = 'No changes';
                 }
@@ -225,7 +327,7 @@ jobs:
               ? `### ✅ All Terraform Checks Passed!\n\n**${passed}** directories validated successfully.`
               : `### ⚠️ Terraform Check Results\n\n**${passed}** passed, **${failed}** failed.`;
 
-            const output = `${summary}\n\n${details}\n\n*Pushed by: @${{ github.actor }}*`;
+            const output = `${summary}\n\n${details}${planDetails}\n\n*Pushed by: @${{ github.actor }}*`;
 
             // Find existing comment
             const comments = await github.rest.issues.listComments({

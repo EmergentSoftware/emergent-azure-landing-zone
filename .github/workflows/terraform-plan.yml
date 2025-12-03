@@ -91,13 +91,11 @@ jobs:
         if: steps.check-backend.outputs.has_backend == 'true'
         run: terraform init -backend=false
         working-directory: ${{ matrix.directory }}
-        continue-on-error: true
 
       - name: Terraform Init (without backend)
         if: steps.check-backend.outputs.has_backend == 'false'
         run: terraform init
         working-directory: ${{ matrix.directory }}
-        continue-on-error: true
 
       - name: Terraform Plan
         id: plan
@@ -114,11 +112,12 @@ jobs:
         id: summary
         if: always()
         run: |
-          if [ -f "${{ matrix.directory }}/plan_output.txt" ]; then
+          PLAN_FILE="${{ matrix.directory }}/plan_output.txt"
+          if [ -f "$PLAN_FILE" ]; then
             # Extract key changes
-            ADD=$(grep -c "will be created" "${{ matrix.directory }}/plan_output.txt" || echo "0")
-            CHANGE=$(grep -c "will be updated" "${{ matrix.directory }}/plan_output.txt" || echo "0")
-            DESTROY=$(grep -c "will be destroyed" "${{ matrix.directory }}/plan_output.txt" || echo "0")
+            ADD=$(grep -c "will be created" "$PLAN_FILE" || echo "0")
+            CHANGE=$(grep -c "will be updated" "$PLAN_FILE" || echo "0")
+            DESTROY=$(grep -c "will be destroyed" "$PLAN_FILE" || echo "0")
 
             echo "add=$ADD" >> $GITHUB_OUTPUT
             echo "change=$CHANGE" >> $GITHUB_OUTPUT

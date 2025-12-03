@@ -1,18 +1,19 @@
 name: Documentation Validation
 
 on:
-  pull_request:
-    branches: [ main ]
-    paths:
-      - '**.tf'
-      - '**.md'
-      - '.github/workflows/documentation-validation.yml'
-  push:
-    branches: [ main ]
-    paths:
-      - '**.tf'
-      - '**.md'
-      - '.github/workflows/documentation-validation.yml'
+  workflow_dispatch:  # Manual trigger only
+  # pull_request:
+  #   branches: [ main ]
+  #   paths:
+  #     - '**.tf'
+  #     - '**.md'
+  #     - '.github/workflows/documentation-validation.yml'
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - '**.tf'
+  #     - '**.md'
+  #     - '.github/workflows/documentation-validation.yml'
 
 permissions:
   contents: read

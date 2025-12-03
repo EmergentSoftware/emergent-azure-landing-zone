@@ -61,17 +61,15 @@ Connectivity Subscription (c82e0943-3765-49ff-97ff-92855167f3ea)
 ```powershell
 cd 02-landing-zones/connectivity
 
-# Initialize backend
-terraform init -reconfigure `
-  -backend-config="resource_group_name=acme-rg-prod-eus-vw01" `
-  -backend-config="storage_account_name=acmestprodeusvw01" `
-  -backend-config="container_name=tfstate-connectivity" `
-  -backend-config="key=connectivity.tfstate"
+# Initialize with backend configuration
+terraform init -backend-config="backend.tfbackend"
 
 # Review and apply
 terraform plan -var-file="terraform.tfvars"
 terraform apply -var-file="terraform.tfvars"
 ```
+
+**Note:** Backend configuration is stored in `backend.tfbackend` and managed by the bootstrap layer outputs.
 
 ## Outputs
 

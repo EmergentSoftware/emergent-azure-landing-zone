@@ -10,14 +10,14 @@
       "parent_id": null
     },
     {
-      "archetypes": ["workloads_restricted", "landing_zones"],
+      "archetypes": ["workloads_restricted", "corp", "landing_zones"],
       "display_name": "ACME Workloads",
       "exists": false,
       "id": "acme-workloads",
       "parent_id": "acme-alz"
     },
     {
-      "archetypes": ["corp"],
+      "archetypes": [],
       "display_name": "ACME Portals",
       "exists": false,
       "id": "acme-portals",

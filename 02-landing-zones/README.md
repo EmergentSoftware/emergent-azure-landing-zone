@@ -101,16 +101,14 @@ Portals Customer Dev (Spoke)
 ```powershell
 cd connectivity
 
-# Initialize backend
-terraform init -reconfigure `
-  -backend-config="resource_group_name=acme-rg-prod-eus-vw01" `
-  -backend-config="storage_account_name=acmestprodeusvw01" `
-  -backend-config="container_name=tfstate-connectivity" `
-  -backend-config="key=connectivity.tfstate"
+# Initialize with backend configuration
+terraform init -backend-config="backend.tfbackend"
 
 # Deploy hub VNet and private DNS zones
 terraform apply -var-file="terraform.tfvars"
 ```
+
+**Note:** Backend configuration is stored in `backend.tfbackend` files generated from bootstrap outputs.
 
 This creates:
 - Hub VNet (10.0.0.0/16) with 6 subnets
@@ -124,22 +122,16 @@ Deploy both portals in parallel for faster completion:
 ```powershell
 # Admin portal network (10.100.0.0/16)
 cd workloads/portals-admin-dev
-terraform init -reconfigure `
-  -backend-config="resource_group_name=acme-rg-prod-eus-vw01" `
-  -backend-config="storage_account_name=acmestprodeusvw01" `
-  -backend-config="container_name=tfstate-portal-dev" `
-  -backend-config="key=portals-admin-dev.tfstate"
-terraform apply
+terraform init -backend-config="backend.tfbackend"
+terraform apply -var-file="terraform.tfvars"
 
 # Customer portal network (10.110.0.0/16)
 cd ../portals-customer-dev
-terraform init -reconfigure `
-  -backend-config="resource_group_name=acme-rg-prod-eus-vw01" `
-  -backend-config="storage_account_name=acmestprodeusvw01" `
-  -backend-config="container_name=tfstate-portal-dev" `
-  -backend-config="key=portals-customer-dev.tfstate"
-terraform apply
+terraform init -backend-config="backend.tfbackend"
+terraform apply -var-file="terraform.tfvars"
 ```
+
+**Note:** All backend configurations use `backend.tfbackend` files for consistent initialization.
 
 Each creates:
 - Spoke VNet with 4 subnets (apps, private endpoints, integration, data)
@@ -156,10 +148,10 @@ All network IP allocations are defined in `ipam.yaml`:
 connectivity:
   hub:
     vnet: 10.0.0.0/16
-    
+
 portals-admin-dev:
   vnet: 10.100.0.0/16
-  
+
 portals-customer-dev:
   vnet: 10.110.0.0/16
 ```
@@ -200,7 +192,7 @@ This provides:
 Step 1: 01-foundation/          → Creates management groups & policies
          ↓
 Step 2: 02-landing-zones/       → Places subscriptions into management groups (THIS)
-         ↓  
+         ↓
 Step 3: 03-workloads/           → Deploys application resources
 ```
 

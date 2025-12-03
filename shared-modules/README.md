@@ -1,124 +1,109 @@
-# Shared Modules Directory
+# Shared Modules
 
-This directory contains wrapper modules for Azure Verified Modules (AVM) that can be reused across all workloads in the organization.
+This directory contains reusable Terraform modules organized by type.
 
-## Purpose
+## Directory Structure
 
-- **Insulation**: Protects workloads from breaking changes in upstream AVM modules
-- **Consistency**: Ensures all workloads use the same module versions
-- **Customization**: Centralized place to add ACME-specific defaults or logic
-- **Version Control**: Single point to manage upstream module versions
+```
+shared-modules/
+ resource-modules/      # Individual Azure resource wrappers
+ utility-modules/       # Helper and utility modules
+─ pattern-modules/       # Composite patterns and templates
+```
 
-## Available Modules
+## Module Categories
 
-### Infrastructure
+### Resource Modules (`resource-modules/`)
 
-- **alz-wrapper**: Azure Landing Zone foundation module
-  - Location: `modules/alz-wrapper/`
-  - Upstream: `Azure/avm-ptn-alz/azurerm`
+Thin wrappers around individual Azure resources using Azure Verified Modules (AVM) where available. These modules provide a consistent interface and standardized tagging/naming.
 
-### Resource Management
+**Available Modules:**
+- `app-service-plan` - Azure App Service Plans
+- `application-insights` - Application Insights instances
+- `log-analytics-workspace` - Log Analytics workspaces
+- `network-security-group` - Network Security Groups (NSGs)
+- `resource-group` - Azure Resource Groups
+- `route-table` - Route Tables (UDRs)
+- `virtual-network` - Virtual Networks with subnet support
+- `web-app` - Web Apps (App Services)
 
-- **resource-group**: Resource group wrapper
-  - Location: `modules/resource-group/`
-  - Upstream: `Azure/avm-res-resources-resourcegroup/azurerm`
+**When to use:** When you need to deploy a single Azure resource with standardized configuration.
 
-### Compute
+### Utility Modules (`utility-modules/`)
 
-- **app-service-plan**: App Service Plan wrapper
-  - Location: `modules/app-service-plan/`
-  - Upstream: `Azure/avm-res-web-serverfarm/azurerm`
+Helper modules that provide supporting functionality without creating resources (or creating minimal supporting resources).
 
-- **web-app**: Web App / App Service wrapper
-  - Location: `modules/web-app/`
-  - Upstream: `Azure/avm-res-web-site/azurerm`
+**Available Modules:**
+- `naming` - Generates consistent Azure resource names following naming conventions
 
-### Networking
+**When to use:** When you need to generate names, validate configurations, or perform utility operations.
 
-- **virtual-network**: Virtual Network wrapper
-  - Location: `modules/virtual-network/`
-  - Upstream: `Azure/avm-res-network-virtualnetwork/azurerm`
+### Pattern Modules (`pattern-modules/`)
 
-### Monitoring
+Composite modules that encapsulate common deployment patterns by combining multiple resource modules and implementing organizational standards.
 
-- **application-insights**: Application Insights wrapper
-  - Location: `modules/application-insights/`
-  - Upstream: `Azure/avm-res-insights-component/azurerm`
+**Available Modules:**
+- `landing-zone-workload` - Complete workload landing zone pattern (subscription association, monitoring, naming)
 
-- **log-analytics-workspace**: Log Analytics Workspace wrapper
-  - Location: `modules/log-analytics-workspace/`
-  - Upstream: `Azure/avm-res-operationalinsights-workspace/azurerm`
+**When to use:** When deploying a complete solution or pattern that combines multiple resources following organizational standards.
 
-## Usage Pattern
+## Usage Guidelines
 
-All workloads should reference these wrapper modules using relative paths:
-
+### Resource Modules
 ```hcl
-# From workloads/my-app/main.tf
-module "resource_group" {
-  source = "../../modules/resource-group"
+module "my_vnet" {
+  source = "../../shared-modules/resource-modules/virtual-network"
   
-  name     = "rg-myapp-dev"
-  location = "eastus"
-  tags     = { Environment = "dev" }
+  name                = "my-vnet"
+  resource_group_name = "my-rg"
+  location            = "eastus"
+  address_space       = ["10.0.0.0/16"]
 }
 ```
 
-## Updating Upstream Modules
-
-To update an upstream AVM module version:
-
-1. Navigate to the wrapper module directory
-2. Edit `main.tf` and change the `version` constraint
-3. Test in a dev workload first
-4. Update documentation if interfaces changed
-5. Roll out to other workloads
-
-Example:
-
+### Utility Modules
 ```hcl
-# modules/web-app/main.tf
-module "web_app" {
-  source  = "Azure/avm-res-web-site/azurerm"
-  version = "~> 0.14"  # Update this version
-  ...
+module "naming" {
+  source   = "../../shared-modules/utility-modules/naming"
+  location = "eastus"
+  suffix   = ["app", "dev"]
+}
+
+resource "azurerm_resource_group" "example" {
+  name     = module.naming.resource_group.name
+  location = "eastus"
 }
 ```
 
-## Adding New Wrapper Modules
-
-When adding a new AVM module to the organization:
-
-1. Create a new directory under `modules/`
-2. Create three files: `main.tf`, `variables.tf`, `outputs.tf`
-3. Add a `README.md` with usage examples
-4. Follow the existing wrapper pattern
-5. Test thoroughly before using in production workloads
-
-## Module Structure
-
-Each wrapper module should follow this structure:
-
-```
-modules/
-└── my-module/
-    ├── main.tf           # Wraps upstream AVM module
-    ├── variables.tf      # Input variables
-    ├── outputs.tf        # Output values
-    └── README.md         # Usage documentation
+### Pattern Modules
+```hcl
+module "landing_zone" {
+  source = "../../shared-modules/pattern-modules/landing-zone-workload"
+  
+  subscription_id       = var.subscription_id
+  management_group_name = "acme-portals"
+  landing_zone_name     = "my-workload-dev"
+  environment           = "dev"
+}
 ```
 
-## Best Practices
+## Module Development Guidelines
 
-1. **Keep it Simple**: Wrapper modules should be thin layers over AVM modules
-2. **Pass Through Variables**: Don't override defaults unless ACME-specific
-3. **Document Changes**: Any customization should be documented
-4. **Version Pinning**: Use `~>` constraints for minor version updates
-5. **Test Updates**: Always test version updates in non-production first
+### Resource Modules
+- Wrap a single Azure resource type
+- Use Azure Verified Modules (AVM) when available
+- Expose commonly-used parameters
+- Provide sensible defaults
+- Include comprehensive outputs
 
-## Benefits
+### Utility Modules
+- Provide helper functionality
+- Minimize resource creation
+- Focus on data transformation or generation
+- Keep dependencies minimal
 
-- **Reduced Risk**: Changes to upstream modules don't immediately break workloads
-- **Easier Updates**: Update one place instead of many workloads
-- **Compliance**: Add organization-wide compliance logic in wrappers
-- **Onboarding**: New team members use consistent, documented modules
+### Pattern Modules
+- Combine multiple resource/utility modules
+- Implement organizational standards
+- Reduce boilerplate in consuming code
+- Document the pattern and use cases

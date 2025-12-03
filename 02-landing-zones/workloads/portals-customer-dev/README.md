@@ -44,17 +44,15 @@ Customer Portal Dev Subscription (9a877ddf-9796-43a8-a557-f6af1df195bf)
 ```powershell
 cd 02-landing-zones/workloads/portals-customer-dev
 
-# Initialize backend
-terraform init -reconfigure `
-  -backend-config="resource_group_name=acme-rg-prod-eus-vw01" `
-  -backend-config="storage_account_name=acmestprodeusvw01" `
-  -backend-config="container_name=tfstate-portal-dev" `
-  -backend-config="key=portals-customer-dev.tfstate"
+# Initialize with backend configuration
+terraform init -backend-config="backend.tfbackend"
 
 # Review and apply
 terraform plan -var-file="terraform.tfvars"
 terraform apply -var-file="terraform.tfvars"
 ```
+
+**Note:** Backend configuration is stored in `backend.tfbackend` and managed by the bootstrap layer outputs.
 
 ## Outputs
 

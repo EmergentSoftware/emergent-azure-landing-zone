@@ -1,7 +1,6 @@
 variable "subscription_id" {
   description = "The connectivity subscription ID"
   type        = string
-  default     = "c82e0943-3765-49ff-97ff-92855167f3ea"
 }
 
 variable "tenant_id" {
@@ -16,9 +15,9 @@ variable "management_group_name" {
 }
 
 variable "location" {
-  description = "Azure region for resources"
+  description = "Primary Azure region for resources"
   type        = string
-  default     = "eastus2"
+  default     = "eastus"
 }
 
 variable "location_short" {

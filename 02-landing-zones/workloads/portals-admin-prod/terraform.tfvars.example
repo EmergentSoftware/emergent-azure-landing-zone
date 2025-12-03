@@ -1,0 +1,5 @@
+# Azure AD tenant ID
+tenant_id = "00000000-0000-0000-0000-000000000000"
+
+# Portal admin prod subscription ID
+subscription_id = "00000000-0000-0000-0000-000000000000"

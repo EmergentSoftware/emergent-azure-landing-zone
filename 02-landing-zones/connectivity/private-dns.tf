@@ -5,7 +5,7 @@
 
 # Resource Group for Private DNS Zones
 module "private_dns_resource_group" {
-  source = "../../shared-modules/resource-group"
+  source = "../../shared-modules/resource-modules/resource-group"
 
   name     = "${module.naming.resource_group.name}-privatedns"
   location = var.location
@@ -36,7 +36,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "static_web_apps_hub" {
   name                  = "link-hub-static-web-apps"
   resource_group_name   = module.private_dns_resource_group.name
   private_dns_zone_name = azurerm_private_dns_zone.static_web_apps.name
-  virtual_network_id    = module.hub_vnet.virtual_network_resource_id
+  virtual_network_id    = module.hub_vnet.resource_id
   registration_enabled  = false
 
   tags = local.common_tags
@@ -61,7 +61,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "storage_blob_hub" {
   name                  = "link-hub-storage-blob"
   resource_group_name   = module.private_dns_resource_group.name
   private_dns_zone_name = azurerm_private_dns_zone.storage_blob.name
-  virtual_network_id    = module.hub_vnet.virtual_network_resource_id
+  virtual_network_id    = module.hub_vnet.resource_id
   registration_enabled  = false
 
   tags = local.common_tags
@@ -83,7 +83,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "storage_file_hub" {
   name                  = "link-hub-storage-file"
   resource_group_name   = module.private_dns_resource_group.name
   private_dns_zone_name = azurerm_private_dns_zone.storage_file.name
-  virtual_network_id    = module.hub_vnet.virtual_network_resource_id
+  virtual_network_id    = module.hub_vnet.resource_id
   registration_enabled  = false
 
   tags = local.common_tags
@@ -105,7 +105,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "storage_table_hub" {
   name                  = "link-hub-storage-table"
   resource_group_name   = module.private_dns_resource_group.name
   private_dns_zone_name = azurerm_private_dns_zone.storage_table.name
-  virtual_network_id    = module.hub_vnet.virtual_network_resource_id
+  virtual_network_id    = module.hub_vnet.resource_id
   registration_enabled  = false
 
   tags = local.common_tags
@@ -127,7 +127,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "storage_queue_hub" {
   name                  = "link-hub-storage-queue"
   resource_group_name   = module.private_dns_resource_group.name
   private_dns_zone_name = azurerm_private_dns_zone.storage_queue.name
-  virtual_network_id    = module.hub_vnet.virtual_network_resource_id
+  virtual_network_id    = module.hub_vnet.resource_id
   registration_enabled  = false
 
   tags = local.common_tags
@@ -152,7 +152,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "sql_database_hub" {
   name                  = "link-hub-sql-database"
   resource_group_name   = module.private_dns_resource_group.name
   private_dns_zone_name = azurerm_private_dns_zone.sql_database.name
-  virtual_network_id    = module.hub_vnet.virtual_network_resource_id
+  virtual_network_id    = module.hub_vnet.resource_id
   registration_enabled  = false
 
   tags = local.common_tags
@@ -177,7 +177,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "cosmos_sql_hub" {
   name                  = "link-hub-cosmos-sql"
   resource_group_name   = module.private_dns_resource_group.name
   private_dns_zone_name = azurerm_private_dns_zone.cosmos_sql.name
-  virtual_network_id    = module.hub_vnet.virtual_network_resource_id
+  virtual_network_id    = module.hub_vnet.resource_id
   registration_enabled  = false
 
   tags = local.common_tags
@@ -202,7 +202,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "key_vault_hub" {
   name                  = "link-hub-key-vault"
   resource_group_name   = module.private_dns_resource_group.name
   private_dns_zone_name = azurerm_private_dns_zone.key_vault.name
-  virtual_network_id    = module.hub_vnet.virtual_network_resource_id
+  virtual_network_id    = module.hub_vnet.resource_id
   registration_enabled  = false
 
   tags = local.common_tags
@@ -227,7 +227,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "app_service_hub" {
   name                  = "link-hub-app-service"
   resource_group_name   = module.private_dns_resource_group.name
   private_dns_zone_name = azurerm_private_dns_zone.app_service.name
-  virtual_network_id    = module.hub_vnet.virtual_network_resource_id
+  virtual_network_id    = module.hub_vnet.resource_id
   registration_enabled  = false
 
   tags = local.common_tags
@@ -252,7 +252,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "container_registry_hub
   name                  = "link-hub-container-registry"
   resource_group_name   = module.private_dns_resource_group.name
   private_dns_zone_name = azurerm_private_dns_zone.container_registry.name
-  virtual_network_id    = module.hub_vnet.virtual_network_resource_id
+  virtual_network_id    = module.hub_vnet.resource_id
   registration_enabled  = false
 
   tags = local.common_tags
@@ -278,7 +278,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "service_bus_hub" {
   name                  = "link-hub-service-bus"
   resource_group_name   = module.private_dns_resource_group.name
   private_dns_zone_name = azurerm_private_dns_zone.service_bus.name
-  virtual_network_id    = module.hub_vnet.virtual_network_resource_id
+  virtual_network_id    = module.hub_vnet.resource_id
   registration_enabled  = false
 
   tags = local.common_tags

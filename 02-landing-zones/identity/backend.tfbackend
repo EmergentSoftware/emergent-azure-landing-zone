@@ -1,0 +1,4 @@
+resource_group_name  = "acme-rg-prod-eus-vw01"
+storage_account_name = "acmestprodeusvw01"
+container_name       = "tfstate-identity"
+key                  = "identity.tfstate"

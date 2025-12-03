@@ -1,0 +1,184 @@
+name: Documentation Validation
+
+on:
+  workflow_dispatch:  # Manual trigger only
+  # pull_request:
+  #   branches: [ main ]
+  #   paths:
+  #     - '**.tf'
+  #     - '**.md'
+  #     - '.github/workflows/documentation-validation.yml'
+  # push:
+  #   branches: [ main ]
+  #   paths:
+  #     - '**.tf'
+  #     - '**.md'
+  #     - '.github/workflows/documentation-validation.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  find-terraform-dirs:
+    name: Find Terraform Directories
+    runs-on: ubuntu-latest
+    outputs:
+      directories: ${{ steps.set-dirs.outputs.directories }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Find Terraform root directories
+        id: set-dirs
+        run: |
+          # Find directories with main.tf (potential documentation targets)
+          DIRS=$(find . -type f -name "main.tf" -not -path "*/.terraform/*" -not -path "*/.git/*" | \
+                 xargs -I {} dirname {} | \
+                 sort -u | \
+                 jq -R -s -c 'split("\n")[:-1] | map(sub("^./"; "")) | map(select(length > 0))')
+          echo "directories=$DIRS" >> $GITHUB_OUTPUT
+
+  validate-documentation:
+    name: Validate Docs for ${{ matrix.directory }}
+    runs-on: ubuntu-latest
+    needs: find-terraform-dirs
+    strategy:
+      fail-fast: false
+      matrix:
+        directory: ${{ fromJson(needs.find-terraform-dirs.outputs.directories) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Check for README
+        id: check-readme
+        run: |
+          if [ -f "${{ matrix.directory }}/README.md" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ README.md exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "❌ README.md missing"
+          fi
+
+      - name: Check README content quality
+        id: check-content
+        if: steps.check-readme.outputs.exists == 'true'
+        run: |
+          README="${{ matrix.directory }}/README.md"
+          ISSUES=""
+
+          # Check for minimum content
+          LINES=$(wc -l < "$README")
+          if [ "$LINES" -lt 5 ]; then
+            ISSUES="${ISSUES}- README too short (less than 5 lines)\n"
+          fi
+
+          # Check for required sections (case insensitive)
+          if ! grep -qi "^#.*overview\|^#.*description\|^#.*about" "$README"; then
+            ISSUES="${ISSUES}- Missing overview/description section\n"
+          fi
+
+          if ! grep -qi "^#.*usage\|^#.*example\|^#.*how to" "$README"; then
+            ISSUES="${ISSUES}- Missing usage/example section\n"
+          fi
+
+          # Check if variables are documented (if variables.tf exists)
+          if [ -f "${{ matrix.directory }}/variables.tf" ]; then
+            if ! grep -qi "variable\|input\|parameter" "$README"; then
+              ISSUES="${ISSUES}- Variables not documented\n"
+            fi
+          fi
+
+          # Check if outputs are documented (if outputs.tf exists)
+          if [ -f "${{ matrix.directory }}/outputs.tf" ]; then
+            if ! grep -qi "output\|return" "$README"; then
+              ISSUES="${ISSUES}- Outputs not documented\n"
+            fi
+          fi
+
+          if [ -n "$ISSUES" ]; then
+            echo "quality=warning" >> $GITHUB_OUTPUT
+            echo -e "issues<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$ISSUES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "quality=good" >> $GITHUB_OUTPUT
+            echo "✅ README content quality is good"
+          fi
+
+      - name: Check for terraform.tfvars.example
+        id: check-example
+        run: |
+          if [ -f "${{ matrix.directory }}/terraform.tfvars.example" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ terraform.tfvars.example exists"
+          else
+            # Only warn if variables.tf exists
+            if [ -f "${{ matrix.directory }}/variables.tf" ]; then
+              echo "exists=false" >> $GITHUB_OUTPUT
+              echo "⚠️ terraform.tfvars.example missing (but variables.tf exists)"
+            else
+              echo "exists=not-needed" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Set overall result
+        id: result
+        if: always()
+        run: |
+          README_STATUS="${{ steps.check-readme.outputs.exists }}"
+          QUALITY="${{ steps.check-content.outputs.quality }}"
+          EXAMPLE_STATUS="${{ steps.check-example.outputs.exists }}"
+
+          if [ "$README_STATUS" = "false" ]; then
+            echo "status=fail" >> $GITHUB_OUTPUT
+            echo "message=Missing README.md" >> $GITHUB_OUTPUT
+          elif [ "$QUALITY" = "warning" ]; then
+            echo "status=warning" >> $GITHUB_OUTPUT
+            echo "message=README quality issues found" >> $GITHUB_OUTPUT
+          elif [ "$EXAMPLE_STATUS" = "false" ]; then
+            echo "status=warning" >> $GITHUB_OUTPUT
+            echo "message=Missing terraform.tfvars.example" >> $GITHUB_OUTPUT
+          else
+            echo "status=pass" >> $GITHUB_OUTPUT
+            echo "message=Documentation is complete" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Output results
+        run: |
+          echo "### Documentation Check: ${{ matrix.directory }}"
+          echo "Status: ${{ steps.result.outputs.status }}"
+          echo "Message: ${{ steps.result.outputs.message }}"
+          if [ -n "${{ steps.check-content.outputs.issues }}" ]; then
+            echo "Issues:"
+            echo "${{ steps.check-content.outputs.issues }}"
+          fi
+
+  comment-pr:
+    name: Comment PR with Results
+    runs-on: ubuntu-latest
+    needs: validate-documentation
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Post Summary Comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // This is a simplified version - in production you'd collect results from the matrix jobs
+            const output = `### 📚 Documentation Validation Complete
+
+            Documentation checks have been run on all Terraform directories.
+            Check the workflow run details for specific issues.
+
+            *Pushed by: @${{ github.actor }}*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });

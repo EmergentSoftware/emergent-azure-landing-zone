@@ -1,13 +1,7 @@
-name: Terraform Validation
+name: Terraform PR Checks
 
 on:
   pull_request:
-    branches: [ main ]
-    paths:
-      - '**.tf'
-      - '**.tfvars.example'
-      - '.github/workflows/terraform-validate.yml'
-  push:
     branches: [ main ]
     paths:
       - '**.tf'
@@ -17,38 +11,64 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  issues: write
 
 jobs:
-  find-terraform-dirs:
-    name: Find Terraform Directories
+  find-changed-dirs:
+    name: Find Changed Terraform Directories
     runs-on: ubuntu-latest
     outputs:
       directories: ${{ steps.set-dirs.outputs.directories }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Find all Terraform directories
+      - name: Find changed Terraform directories
         id: set-dirs
         run: |
-          # Find all directories containing .tf files (excluding .terraform directories)
-          DIRS=$(find . -type f -name "*.tf" -not -path "*/.terraform/*" -not -path "*/.git/*" | \
-                 xargs -I {} dirname {} | \
-                 sort -u | \
-                 jq -R -s -c 'split("\n")[:-1] | map(sub("^./"; ""))')
-          echo "directories=$DIRS" >> $GITHUB_OUTPUT
-          echo "Found Terraform directories:"
-          echo "$DIRS" | jq -r '.[]'
+          # Get list of changed files
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
 
-  terraform-validate:
-    name: Validate ${{ matrix.directory }}
+          # Find unique directories containing changed .tf or .tfvars files
+          CHANGED_DIRS=$(echo "$CHANGED_FILES" | \
+            grep -E '\.(tf|tfvars\.example)$' | \
+            xargs -I {} dirname {} | \
+            sort -u)
+
+          # For each changed directory, find the root Terraform directory
+          ROOT_DIRS=""
+          for dir in $CHANGED_DIRS; do
+            current_dir="$dir"
+            while [ "$current_dir" != "." ]; do
+              if [ -f "$current_dir/main.tf" ] || [ -f "$current_dir/backend.tfbackend" ]; then
+                ROOT_DIRS="$ROOT_DIRS $current_dir"
+                break
+              fi
+              current_dir=$(dirname "$current_dir")
+            done
+          done
+
+          # Remove duplicates and convert to JSON array
+          if [ -n "$ROOT_DIRS" ]; then
+            DIRS=$(echo "$ROOT_DIRS" | tr ' ' '\n' | sort -u | grep -v '^$' | jq -R -s -c 'split("\n")[:-1]')
+            echo "directories=$DIRS" >> $GITHUB_OUTPUT
+            echo "Found changed Terraform directories:"
+            echo "$DIRS" | jq -r '.[]'
+          else
+            echo "directories=[]" >> $GITHUB_OUTPUT
+            echo "No Terraform directories changed"
+          fi
+
+  terraform-check:
+    name: Check ${{ matrix.directory }}
     runs-on: ubuntu-latest
-    needs: find-terraform-dirs
+    needs: find-changed-dirs
+    if: needs.find-changed-dirs.outputs.directories != '[]'
     strategy:
       fail-fast: false
       matrix:
-        directory: ${{ fromJson(needs.find-terraform-dirs.outputs.directories) }}
+        directory: ${{ fromJson(needs.find-changed-dirs.outputs.directories) }}
     outputs:
       result: ${{ steps.set-output.outputs.result }}
 
@@ -60,6 +80,21 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "~> 1.12"
+
+      - name: Cache Terraform providers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            ${{ matrix.directory }}/.terraform
+          key: ${{ runner.os }}-terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            ${{ runner.os }}-terraform-
+
+      - name: Configure Terraform plugin cache
+        run: |
+          mkdir -p ~/.terraform.d/plugin-cache
+          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
 
       - name: Terraform Format Check
         id: fmt
@@ -75,20 +110,77 @@ jobs:
 
       - name: Terraform Validate
         id: validate
-        run: terraform validate
+        run: terraform validate -no-color
         working-directory: ${{ matrix.directory }}
         continue-on-error: true
+
+      - name: Check for backend config
+        id: check-backend
+        run: |
+          if [ -f "${{ matrix.directory }}/backend.tfbackend" ]; then
+            echo "has_backend=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_backend=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for tfvars.example
+        id: check-tfvars
+        run: |
+          if [ -f "${{ matrix.directory }}/terraform.tfvars.example" ]; then
+            cp "${{ matrix.directory }}/terraform.tfvars.example" "${{ matrix.directory }}/terraform.tfvars"
+            echo "has_tfvars=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_tfvars=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          if [ -f "terraform.tfvars" ]; then
+            terraform plan -var-file="terraform.tfvars" -no-color -out=tfplan 2>&1 | tee plan_output.txt
+          else
+            terraform plan -no-color -out=tfplan 2>&1 | tee plan_output.txt
+          fi
+        working-directory: ${{ matrix.directory }}
+        continue-on-error: true
+
+      - name: Generate plan summary
+        id: plan-summary
+        if: always()
+        run: |
+          PLAN_FILE="${{ matrix.directory }}/plan_output.txt"
+          if [ -f "$PLAN_FILE" ]; then
+            ADD=$(grep -c "will be created" "$PLAN_FILE" || echo "0")
+            CHANGE=$(grep -c "will be updated" "$PLAN_FILE" || echo "0")
+            DESTROY=$(grep -c "will be destroyed" "$PLAN_FILE" || echo "0")
+
+            echo "add=$ADD" >> $GITHUB_OUTPUT
+            echo "change=$CHANGE" >> $GITHUB_OUTPUT
+            echo "destroy=$DESTROY" >> $GITHUB_OUTPUT
+          else
+            echo "add=0" >> $GITHUB_OUTPUT
+            echo "change=0" >> $GITHUB_OUTPUT
+            echo "destroy=0" >> $GITHUB_OUTPUT
+          fi
 
       - name: Set Output
         id: set-output
         if: always()
         run: |
-          echo "result=${{ matrix.directory }}|${{ steps.fmt.outcome }}|${{ steps.init.outcome }}|${{ steps.validate.outcome }}" >> $GITHUB_OUTPUT
+          echo "result=${{ matrix.directory }}|${{ steps.fmt.outcome }}|${{ steps.init.outcome }}|${{ steps.validate.outcome }}|${{ steps.plan.outcome }}|${{ steps.plan-summary.outputs.add }}|${{ steps.plan-summary.outputs.change }}|${{ steps.plan-summary.outputs.destroy }}" >> $GITHUB_OUTPUT
+
+      - name: Upload plan artifact
+        if: steps.plan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ hashFiles(matrix.directory) }}
+          path: ${{ matrix.directory }}/tfplan
+          retention-days: 5
 
   comment-pr:
     name: Comment PR with Results
     runs-on: ubuntu-latest
-    needs: terraform-validate
+    needs: terraform-check
     if: github.event_name == 'pull_request'
     steps:
       - name: Post Summary Comment
@@ -96,46 +188,57 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const results = `${{ join(needs.terraform-validate.outputs.*, '\n') }}`.split('\n').filter(r => r);
-            
+            const results = `${{ join(needs.terraform-check.outputs.*, '\n') }}`.split('\n').filter(r => r);
+
             let passed = 0;
             let failed = 0;
-            let details = '| Directory | Format | Init | Validate |\n|-----------|--------|------|----------|\n';
-            
+            let details = '| Directory | Format | Init | Validate | Plan | Changes |\n|-----------|--------|------|----------|------|----------|\n';
+
             results.forEach(result => {
               if (!result) return;
-              const [dir, fmt, init, validate] = result.split('|');
+              const [dir, fmt, init, validate, plan, add, change, destroy] = result.split('|');
               const fmtIcon = fmt === 'success' ? '✅' : '❌';
               const initIcon = init === 'success' ? '✅' : '❌';
               const validateIcon = validate === 'success' ? '✅' : '❌';
-              details += `| \`${dir}\` | ${fmtIcon} | ${initIcon} | ${validateIcon} |\n`;
-              
+              const planIcon = plan === 'success' ? '✅' : plan === 'skipped' ? '⏭️' : '❌';
+
+              let changesSummary = '-';
+              if (plan === 'success') {
+                const total = parseInt(add || 0) + parseInt(change || 0) + parseInt(destroy || 0);
+                if (total > 0) {
+                  changesSummary = `🟢${add} 🟡${change} 🔴${destroy}`;
+                } else {
+                  changesSummary = 'No changes';
+                }
+              }
+
+              details += `| \`${dir}\` | ${fmtIcon} | ${initIcon} | ${validateIcon} | ${planIcon} | ${changesSummary} |\n`;
+
               if (fmt === 'success' && init === 'success' && validate === 'success') {
                 passed++;
               } else {
                 failed++;
               }
             });
-            
-            const summary = failed === 0 
-              ? `### ✅ All Terraform Validations Passed!\n\n**${passed}** directories validated successfully.`
-              : `### ⚠️ Terraform Validation Results\n\n**${passed}** passed, **${failed}** failed.`;
-            
+
+            const summary = failed === 0
+              ? `### ✅ All Terraform Checks Passed!\n\n**${passed}** directories validated successfully.`
+              : `### ⚠️ Terraform Check Results\n\n**${passed}** passed, **${failed}** failed.`;
+
             const output = `${summary}\n\n${details}\n\n*Pushed by: @${{ github.actor }}*`;
-            
+
             // Find existing comment
             const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
-            
-            const botComment = comments.data.find(comment => 
-              comment.user.type === 'Bot' && comment.body.includes('Terraform Validation')
+
+            const botComment = comments.data.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes('Terraform Check')
             );
-            
+
             if (botComment) {
-              // Update existing comment
               await github.rest.issues.updateComment({
                 comment_id: botComment.id,
                 owner: context.repo.owner,
@@ -143,7 +246,6 @@ jobs:
                 body: output
               });
             } else {
-              // Create new comment
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,

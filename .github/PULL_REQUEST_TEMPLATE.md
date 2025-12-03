@@ -1,52 +1,25 @@
 # Pull Request
 
 ## Description
-Please provide a clear and concise description of your changes.
+<!-- Brief description of your changes -->
 
 ## Type of Change
-Please check the relevant option(s):
+- [ ] Infrastructure change (landing zones, networking, etc.)
+- [ ] Application workload change
+- [ ] Module/pattern update
+- [ ] Documentation
+- [ ] CI/CD workflow
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-- [ ] Code refactoring
-- [ ] Configuration change
-
-## Changes Made
-List the specific changes made in this PR:
+## Changes
+<!-- List key changes -->
 - 
 - 
-- 
-
-## Related Issues
-Fixes #(issue number)
-Related to #(issue number)
 
 ## Testing
-Please describe the tests you've performed:
+- [ ] `terraform fmt` and `terraform validate` passed
+- [ ] Reviewed terraform plan output
+- [ ] Tested in dev/non-prod environment
 
-- [ ] Tested locally with `terraform plan`
-- [ ] Tested deployment with `terraform apply`
-- [ ] Validated with example configurations
-- [ ] Ran `terraform fmt` and `terraform validate`
+## Notes
+<!-- Any additional context for reviewers -->
 
-### Test Configuration
-- **Terraform Version**: 
-- **Azure Subscription Type**: 
-- **Modules Tested**: 
-
-## Checklist
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] My changes generate no new warnings
-- [ ] I have checked that my changes don't introduce security vulnerabilities
-- [ ] Any dependent changes have been merged and published
-
-## Screenshots (if applicable)
-Add screenshots to help explain your changes.
-
-## Additional Notes
-Add any additional information that reviewers should know.

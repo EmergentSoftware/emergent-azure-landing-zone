@@ -1,6 +1,6 @@
 # =============================================================================
-# Example Workload: Customer Portal using Azure Static Web Apps
-# This demonstrates deploying a portal application using Static Web Apps
+# Customer Portal Dev Workload - Static Website Storage
+# This demonstrates deploying a static HTML site using blob storage
 # =============================================================================
 
 terraform {
@@ -10,14 +10,9 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
-    }
   }
   backend "azurerm" {
     # Backend configuration will be provided via backend config parameters
-    # Use different state files per environment
   }
 }
 
@@ -27,20 +22,29 @@ provider "azurerm" {
 }
 
 # =============================================================================
-# Naming Module for Consistent Azure Resource Naming
+# Static Site Storage Pattern Module
 # =============================================================================
 
-module "naming" {
-  source   = "../../../shared-modules/utility-modules/naming"
-  location = var.location
-  suffix   = [var.landing_zone, var.workload_name, var.environment]
-}
+module "static_site" {
+  source = "../../../shared-modules/pattern-modules/static-site-storage"
 
-# Generate random suffix for unique naming
-resource "random_string" "suffix" {
-  length  = 6
-  special = false
-  upper   = false
+  subscription_id = var.subscription_id
+  tenant_id       = var.tenant_id
+  environment     = var.environment
+  location        = var.location
+  naming_suffix   = ["portals", "customer", var.workload_name, var.environment]
+  purpose         = "Customer Portal Static Site"
+
+  storage_account_tier     = var.storage_account_tier
+  storage_replication_type = var.storage_replication_type
+  index_document           = var.index_document
+  error_404_document       = var.error_404_document
+
+  tags = var.tags
+  common_tags = {
+    DeploymentMethod = "Terraform"
+    Repository       = "emergent-azure-landing-zone"
+  }
 }
 
 # Prepare common tags for all resources
@@ -70,19 +74,32 @@ module "resource_group" {
 }
 
 # =============================================================================
-# Static Web App using Wrapper Module
+# Storage Account using Wrapper Module
 # =============================================================================
 
-module "static_web_app" {
-  source = "../../../shared-modules/static-web-app"
+module "storage_account" {
+  source = "../../../shared-modules/resource-modules/storage-account"
 
-  name                    = module.naming.app_service.name_unique
-  resource_group_name     = module.resource_group.name
-  location                = var.location
-  sku_tier                = var.static_web_app_sku_tier
-  sku_size                = var.static_web_app_sku_size
-  enable_managed_identity = var.enable_managed_identity
-  tags                    = local.common_tags
+  name                       = module.naming.storage_account.name_unique
+  resource_group_name        = module.resource_group.name
+  location                   = var.location
+  account_tier               = var.storage_account_tier
+  account_replication_type   = var.storage_replication_type
+  https_traffic_only_enabled = true
+  min_tls_version            = "TLS1_2"
+  tags                       = local.common_tags
+}
+
+# =============================================================================
+# Blob Container using Wrapper Module
+# =============================================================================
+
+module "blob_container" {
+  source = "../../../shared-modules/resource-modules/storage-container"
+
+  name                  = var.container_name
+  storage_account_id    = module.storage_account.resource_id
+  container_access_type = var.container_access_type
 }
 
 # =============================================================================

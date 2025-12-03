@@ -1,0 +1,24 @@
+# =============================================================================
+# Admin Portal Dev Workload - Static Website Storage Example
+# =============================================================================
+
+subscription_id = "00000000-0000-0000-0000-000000000000"
+tenant_id       = "00000000-0000-0000-0000-000000000000"
+workload_name   = "site"
+environment     = "dev"
+location        = "eastus2"
+
+# Storage Account configuration
+storage_account_tier     = "Standard"
+storage_replication_type = "LRS"
+
+# Static Website configuration
+index_document     = "index.html"
+error_404_document = "404.html"
+
+# Tags
+tags = {
+  Project    = "Admin Portal"
+  CostCenter = "Engineering"
+  Owner      = "Platform Team"
+}

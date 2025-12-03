@@ -1,18 +1,6 @@
-# Azure AD tenant ID
-tenant_id = "00000000-0000-0000-0000-000000000000"
+# =============================================================================
+# Portals Customer Dev Landing Zone Configuration
+# =============================================================================
 
-# Portal customer dev subscription ID
 subscription_id = "00000000-0000-0000-0000-000000000000"
-
-# Management group name (already set as default in variables.tf)
-# management_group_name = "acme-portals"
-
-# Environment (already set as default in variables.tf)
-# environment = "dev"
-
-# Location (already set as default in variables.tf)
-# location = "eastus"
-
-# Monitoring configuration (already set as defaults in variables.tf)
-# create_log_analytics = true
-# log_retention_days = 30
+tenant_id       = "00000000-0000-0000-0000-000000000000"

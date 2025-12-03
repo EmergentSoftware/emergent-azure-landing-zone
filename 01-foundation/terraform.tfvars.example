@@ -1,24 +1,6 @@
 # =============================================================================
-# Example Terraform Variables
-# Copy this file to terraform.tfvars and customize the values
+# Foundation Configuration
 # =============================================================================
 
-# Default Azure region
-default_location = "eastus"
-
-# Security contact email
-security_contact_email = "security@acme.com"
-
-# Allowed Azure regions for resource deployment
-allowed_locations = [
-  "eastus",
-  "eastus2",
-  "centralus",
-  "westus2"
-]
-
-# Optional: Log Analytics Workspace ID for centralized logging
-# log_analytics_workspace_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-logging/providers/Microsoft.OperationalInsights/workspaces/log-analytics-workspace"
-
-# Enable telemetry
-enable_telemetry = true
+subscription_id = "00000000-0000-0000-0000-000000000000"
+tenant_id       = "00000000-0000-0000-0000-000000000000"

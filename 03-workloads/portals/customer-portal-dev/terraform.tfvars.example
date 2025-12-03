@@ -1,28 +1,6 @@
 # =============================================================================
-# Admin Portal Dev Workload - Blob Storage Configuration Example
+# Customer Portal Dev Workload Configuration
 # =============================================================================
 
 subscription_id = "00000000-0000-0000-0000-000000000000"
-workload_name   = "site"
-environment     = "dev"
-location        = "eastus"
-
-# Storage Account configuration
-storage_account_tier     = "Standard"
-storage_replication_type = "LRS"
-storage_account_kind     = "StorageV2"
-
-# Blob Container configuration
-container_name        = "data"
-container_access_type = "private"
-
-# Monitoring
-enable_application_insights = true
-log_analytics_workspace_id  = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-name/providers/Microsoft.OperationalInsights/workspaces/workspace-name"
-
-# Tags
-tags = {
-  Project    = "Admin Portal"
-  CostCenter = "Engineering"
-  Owner      = "Platform Team"
-}
+tenant_id       = "00000000-0000-0000-0000-000000000000"

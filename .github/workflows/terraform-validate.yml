@@ -233,6 +233,14 @@ jobs:
           RESULT="${{ matrix.directory }}|${{ steps.fmt.outcome }}|${{ steps.init.outcome }}|${{ steps.validate.outcome }}|${{ steps.plan.outcome }}|${{ steps.plan-summary.outputs.add }}|${{ steps.plan-summary.outputs.change }}|${{ steps.plan-summary.outputs.destroy }}"
           echo "result=${RESULT}" >> "${GITHUB_OUTPUT}"
 
+      - name: Upload plan output
+        if: steps.plan.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: plan-output-${{ hashFiles(matrix.directory) }}
+          path: ${{ matrix.directory }}/plan_output.txt
+          retention-days: 5
+
       - name: Upload plan artifact
         if: steps.plan.outcome == 'success'
         uses: actions/upload-artifact@v4
@@ -247,16 +255,26 @@ jobs:
     needs: terraform-check
     if: github.event_name == 'pull_request'
     steps:
+      - name: Download plan outputs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: plan-output-*
+          path: plan-outputs
+          merge-multiple: true
+
       - name: Post Summary Comment
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const fs = require('fs');
+            const path = require('path');
             const results = `${{ join(needs.terraform-check.outputs.*, '\n') }}`.split('\n').filter(r => r);
 
             let passed = 0;
             let failed = 0;
             let details = '| Directory | Format | Init | Validate | Plan | Changes |\n|-----------|--------|------|----------|------|----------|\n';
+            let planDetails = '';
 
             results.forEach(result => {
               if (!result) return;
@@ -270,7 +288,27 @@ jobs:
               if (plan === 'success') {
                 const total = parseInt(add || 0) + parseInt(change || 0) + parseInt(destroy || 0);
                 if (total > 0) {
-                  changesSummary = `🟢${add} 🟡${change} 🔴${destroy}`;
+                  const parts = [];
+                  if (parseInt(add || 0) > 0) parts.push(`+${add} to add`);
+                  if (parseInt(change || 0) > 0) parts.push(`~${change} to change`);
+                  if (parseInt(destroy || 0) > 0) parts.push(`-${destroy} to destroy`);
+                  changesSummary = parts.join(', ');
+
+                  // Try to read plan output file
+                  try {
+                    const planFiles = fs.readdirSync('plan-outputs');
+                    const planFile = planFiles.find(f => f.includes('plan_output.txt'));
+                    if (planFile) {
+                      const planContent = fs.readFileSync(path.join('plan-outputs', planFile), 'utf8');
+                      // Extract the plan section (between "Terraform will perform" and "Plan:")
+                      const planMatch = planContent.match(/Terraform will perform the following actions:([\s\S]*?)(?:Plan:|─{5,})/);
+                      if (planMatch) {
+                        planDetails += `\n<details>\n<summary>📋 Plan for <code>${dir}</code></summary>\n\n\`\`\`terraform\n${planMatch[1].trim()}\n\`\`\`\n</details>\n`;
+                      }
+                    }
+                  } catch (e) {
+                    // Silently ignore if plan file not found
+                  }
                 } else {
                   changesSummary = 'No changes';
                 }
@@ -289,7 +327,7 @@ jobs:
               ? `### ✅ All Terraform Checks Passed!\n\n**${passed}** directories validated successfully.`
               : `### ⚠️ Terraform Check Results\n\n**${passed}** passed, **${failed}** failed.`;
 
-            const output = `${summary}\n\n${details}\n\n*Pushed by: @${{ github.actor }}*`;
+            const output = `${summary}\n\n${details}${planDetails}\n\n*Pushed by: @${{ github.actor }}*`;
 
             // Find existing comment
             const comments = await github.rest.issues.listComments({

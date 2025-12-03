@@ -30,7 +30,7 @@ resource "azurerm_resource_group" "network" {
 module "nsg_app_subnet" {
   source = "../../../shared-modules/network-security-group"
 
-  name                = "nsg-${local.portals_customer_dev.subnets[0].name}"
+  name                = "acme-nsg-${replace(local.portals_customer_dev.subnets[0].name, "acme-", "")}"
   location            = local.portals_customer_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
@@ -47,7 +47,7 @@ module "nsg_app_subnet" {
 module "nsg_private_endpoints_subnet" {
   source = "../../../shared-modules/network-security-group"
 
-  name                = "nsg-${local.portals_customer_dev.subnets[1].name}"
+  name                = "acme-nsg-${replace(local.portals_customer_dev.subnets[1].name, "acme-", "")}"
   location            = local.portals_customer_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
@@ -64,7 +64,7 @@ module "nsg_private_endpoints_subnet" {
 module "nsg_vnet_integration_subnet" {
   source = "../../../shared-modules/network-security-group"
 
-  name                = "nsg-snet-portals-customer-int-dev-eus2"
+  name                = "acme-nsg-${replace(local.portals_customer_dev.subnets[2].name, "acme-", "")}"
   location            = local.portals_customer_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
@@ -81,7 +81,7 @@ module "nsg_vnet_integration_subnet" {
 module "nsg_data_services_subnet" {
   source = "../../../shared-modules/network-security-group"
 
-  name                = "nsg-${local.portals_customer_dev.subnets[3].name}"
+  name                = "acme-nsg-${replace(local.portals_customer_dev.subnets[3].name, "acme-", "")}"
   location            = local.portals_customer_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
@@ -99,7 +99,7 @@ module "nsg_data_services_subnet" {
 module "rt_app_subnet" {
   source = "../../../shared-modules/route-table"
 
-  name                = "rt-${local.portals_customer_dev.subnets[0].name}"
+  name                = "acme-rt-${replace(local.portals_customer_dev.subnets[0].name, "acme-", "")}"
   location            = local.portals_customer_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
@@ -116,7 +116,7 @@ module "rt_app_subnet" {
 module "rt_private_endpoints_subnet" {
   source = "../../../shared-modules/route-table"
 
-  name                = "rt-${local.portals_customer_dev.subnets[1].name}"
+  name                = "acme-rt-${replace(local.portals_customer_dev.subnets[1].name, "acme-", "")}"
   location            = local.portals_customer_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
@@ -133,7 +133,7 @@ module "rt_private_endpoints_subnet" {
 module "rt_vnet_integration_subnet" {
   source = "../../../shared-modules/route-table"
 
-  name                = "rt-${local.portals_customer_dev.subnets[2].name}"
+  name                = "acme-rt-${replace(local.portals_customer_dev.subnets[2].name, "acme-", "")}"
   location            = local.portals_customer_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
@@ -150,7 +150,7 @@ module "rt_vnet_integration_subnet" {
 module "rt_data_services_subnet" {
   source = "../../../shared-modules/route-table"
 
-  name                = "rt-${local.portals_customer_dev.subnets[3].name}"
+  name                = "acme-rt-${replace(local.portals_customer_dev.subnets[3].name, "acme-", "")}"
   location            = local.portals_customer_dev.location
   resource_group_name = azurerm_resource_group.network.name
 
@@ -181,10 +181,14 @@ module "portals_vnet" {
   subnets = {
     # Application Subnet
     "${local.portals_customer_dev.subnets[0].name}" = {
-      name                               = local.portals_customer_dev.subnets[0].name
-      address_prefixes                   = [local.portals_customer_dev.subnets[0].address_prefix]
-      network_security_group_resource_id = module.nsg_app_subnet.id
-      route_table_resource_id            = module.rt_app_subnet.id
+      name             = local.portals_customer_dev.subnets[0].name
+      address_prefixes = [local.portals_customer_dev.subnets[0].address_prefix]
+      network_security_group = {
+        id = module.nsg_app_subnet.id
+      }
+      route_table = {
+        id = module.rt_app_subnet.id
+      }
       service_endpoints_with_location = [
         for endpoint in local.portals_customer_dev.subnets[0].service_endpoints : {
           service   = endpoint
@@ -195,19 +199,27 @@ module "portals_vnet" {
 
     # Private Endpoints Subnet
     "${local.portals_customer_dev.subnets[1].name}" = {
-      name                                      = local.portals_customer_dev.subnets[1].name
-      address_prefixes                          = [local.portals_customer_dev.subnets[1].address_prefix]
-      network_security_group_resource_id        = module.nsg_private_endpoints_subnet.id
-      route_table_resource_id                   = module.rt_private_endpoints_subnet.id
+      name             = local.portals_customer_dev.subnets[1].name
+      address_prefixes = [local.portals_customer_dev.subnets[1].address_prefix]
+      network_security_group = {
+        id = module.nsg_private_endpoints_subnet.id
+      }
+      route_table = {
+        id = module.rt_private_endpoints_subnet.id
+      }
       private_endpoint_network_policies_enabled = false
     }
 
     # VNet Integration Subnet (for App Service if needed)
     "${local.portals_customer_dev.subnets[2].name}" = {
-      name                               = local.portals_customer_dev.subnets[2].name
-      address_prefixes                   = [local.portals_customer_dev.subnets[2].address_prefix]
-      network_security_group_resource_id = module.nsg_vnet_integration_subnet.id
-      route_table_resource_id            = module.rt_vnet_integration_subnet.id
+      name             = local.portals_customer_dev.subnets[2].name
+      address_prefixes = [local.portals_customer_dev.subnets[2].address_prefix]
+      network_security_group = {
+        id = module.nsg_vnet_integration_subnet.id
+      }
+      route_table = {
+        id = module.rt_vnet_integration_subnet.id
+      }
       service_endpoints_with_location = [
         for endpoint in local.portals_customer_dev.subnets[2].service_endpoints : {
           service   = endpoint
@@ -224,10 +236,14 @@ module "portals_vnet" {
 
     # Data Services Subnet
     "${local.portals_customer_dev.subnets[3].name}" = {
-      name                               = local.portals_customer_dev.subnets[3].name
-      address_prefixes                   = [local.portals_customer_dev.subnets[3].address_prefix]
-      network_security_group_resource_id = module.nsg_data_services_subnet.id
-      route_table_resource_id            = module.rt_data_services_subnet.id
+      name             = local.portals_customer_dev.subnets[3].name
+      address_prefixes = [local.portals_customer_dev.subnets[3].address_prefix]
+      network_security_group = {
+        id = module.nsg_data_services_subnet.id
+      }
+      route_table = {
+        id = module.rt_data_services_subnet.id
+      }
       service_endpoints_with_location = [
         for endpoint in local.portals_customer_dev.subnets[3].service_endpoints : {
           service   = endpoint

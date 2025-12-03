@@ -88,8 +88,6 @@ module "static_web_app" {
 # =============================================================================
 # Application Insights for monitoring (optional)
 # =============================================================================
-# Application Insights for monitoring (optional)
-# =============================================================================
 
 module "application_insights" {
   count  = var.enable_application_insights ? 1 : 0

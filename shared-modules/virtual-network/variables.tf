@@ -23,6 +23,13 @@ variable "subnets" {
   type = map(object({
     name             = string
     address_prefixes = list(string)
+    network_security_group = optional(object({
+      id = string
+    }))
+    route_table = optional(object({
+      id = string
+    }))
+    private_endpoint_network_policies_enabled = optional(bool, true)
     service_endpoints_with_location = optional(list(object({
       service   = string
       locations = optional(list(string), ["*"])

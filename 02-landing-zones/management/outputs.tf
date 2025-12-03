@@ -26,7 +26,7 @@ output "virtual_network_name" {
 
 output "subnets" {
   description = "Map of subnet names to their resource IDs (if created)"
-  value       = var.create_virtual_network ? module.virtual_network[0].subnets : {}
+  value       = var.create_virtual_network ? module.virtual_network[0].subnets : null
 }
 
 output "networking_resource_group_name" {

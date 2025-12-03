@@ -25,13 +25,6 @@ module "virtual_network" {
   subnets       = var.subnets
   dns_servers   = var.dns_servers
 
-  timeouts = {
-    create = "240m"
-    update = "240m"
-    delete = "240m"
-    read   = "30m"
-  }
-
   tags = var.tags
 }
 

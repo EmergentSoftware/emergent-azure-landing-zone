@@ -1,3 +1,12 @@
+# ==============================================================================
+# Terraform PR Validation Workflow
+# ==============================================================================
+# Validates Terraform configurations on pull requests:
+# - Runs terraform fmt, validate, and plan on changed directories
+# - Posts detailed plan output with resource changes to PR comments
+# - Shows summary: "+X to add, ~Y to change, -Z to destroy"
+# ==============================================================================
+
 name: Terraform PR Checks
 
 on:

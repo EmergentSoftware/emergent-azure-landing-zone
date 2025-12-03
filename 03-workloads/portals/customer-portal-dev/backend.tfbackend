@@ -1,4 +1,4 @@
-resource_group_name  = "acme-rg-terraform-state-eus2"
-storage_account_name = "acmetfstateeus2"
-container_name       = "tfstate"
-key                  = "workloads/portals/customer-portal-dev.tfstate"
+resource_group_name  = "acme-rg-prod-eus-vw01"
+storage_account_name = "acmestprodeusvw01"
+container_name       = "tfstate-portal-dev"
+key                  = "portals-customer-dev.tfstate"

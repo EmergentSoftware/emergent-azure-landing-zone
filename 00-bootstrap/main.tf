@@ -70,7 +70,7 @@ module "resource_group" {
 # =============================================================================
 
 module "storage_account" {
-  source = "../shared-modules/storage-account"
+  source = "../shared-modules/resource-modules/storage-account"
 
   name                = module.naming.storage_account.name_unique
   location            = var.location
@@ -135,7 +135,7 @@ module "storage_account" {
 # =============================================================================
 
 module "containers" {
-  source   = "../shared-modules/storage-container"
+  source   = "../shared-modules/resource-modules/storage-container"
   for_each = toset(var.containers)
 
   name               = each.value

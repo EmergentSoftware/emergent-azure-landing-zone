@@ -195,13 +195,18 @@ jobs:
         run: |
           PLAN_FILE="${{ matrix.directory }}/plan_output.txt"
           if [ -f "$PLAN_FILE" ]; then
-            ADD=$(grep -c "will be created" "$PLAN_FILE" || echo "0")
-            CHANGE=$(grep -c "will be updated" "$PLAN_FILE" || echo "0")
-            DESTROY=$(grep -c "will be destroyed" "$PLAN_FILE" || echo "0")
+            ADD=$(grep -c "will be created" "$PLAN_FILE" 2>/dev/null || echo "0")
+            CHANGE=$(grep -c "will be updated" "$PLAN_FILE" 2>/dev/null || echo "0")
+            DESTROY=$(grep -c "will be destroyed" "$PLAN_FILE" 2>/dev/null || echo "0")
 
-            echo "add=$ADD" >> $GITHUB_OUTPUT
-            echo "change=$CHANGE" >> $GITHUB_OUTPUT
-            echo "destroy=$DESTROY" >> $GITHUB_OUTPUT
+            # Ensure we have valid numbers
+            ADD=${ADD:-0}
+            CHANGE=${CHANGE:-0}
+            DESTROY=${DESTROY:-0}
+
+            echo "add=${ADD}" >> $GITHUB_OUTPUT
+            echo "change=${CHANGE}" >> $GITHUB_OUTPUT
+            echo "destroy=${DESTROY}" >> $GITHUB_OUTPUT
           else
             echo "add=0" >> $GITHUB_OUTPUT
             echo "change=0" >> $GITHUB_OUTPUT

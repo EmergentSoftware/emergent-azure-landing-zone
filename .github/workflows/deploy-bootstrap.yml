@@ -73,7 +73,7 @@ jobs:
         run: terraform plan -var-file="terraform.tfvars" -out=tfplan -no-color 2>&1 | tee plan_output.txt
 
       - name: Upload Plan Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: bootstrap-tfplan
           path: |
@@ -140,7 +140,7 @@ jobs:
             fs.writeFileSync('issue_number.txt', issue.data.number.toString());
 
       - name: Upload Issue Number
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: issue-number
           path: issue_number.txt
@@ -315,7 +315,7 @@ jobs:
 
       - name: Upload Terraform State
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: bootstrap-terraform-state
           path: 00-bootstrap/terraform.tfstate*

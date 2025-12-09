@@ -192,22 +192,19 @@ jobs:
 
       - name: Terraform Plan
         id: plan
+        if: steps.check-tfvars.outputs.has_tfvars == 'true'
         env:
           ARM_USE_CLI: true
           ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           ARM_SUBSCRIPTION_ID: ${{ steps.check-tfvars.outputs.subscription_id || secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
-          if [ -f "terraform.tfvars" ]; then
-            terraform plan -var-file="terraform.tfvars" -no-color -out=tfplan 2>&1 | tee plan_output.txt
-          else
-            terraform plan -no-color -out=tfplan 2>&1 | tee plan_output.txt
-          fi
+          terraform plan -var-file="terraform.tfvars" -no-color -out=tfplan 2>&1 | tee plan_output.txt
         working-directory: ${{ matrix.directory }}
         continue-on-error: true
 
       - name: Generate plan summary
         id: plan-summary
-        if: always()
+        if: always() && steps.check-tfvars.outputs.has_tfvars == 'true'
         shell: bash
         run: |
           PLAN_FILE="${{ matrix.directory }}/plan_output.txt"

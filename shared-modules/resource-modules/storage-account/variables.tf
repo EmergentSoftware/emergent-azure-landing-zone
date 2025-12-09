@@ -34,7 +34,7 @@ variable "min_tls_version" {
 variable "public_network_access_enabled" {
   description = "Enable public network access"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "allow_nested_items_to_be_public" {

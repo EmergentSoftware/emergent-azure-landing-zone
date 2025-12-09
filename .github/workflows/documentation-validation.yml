@@ -1,3 +1,12 @@
+# ==============================================================================
+# Documentation Validation Workflow
+# ==============================================================================
+# Validates documentation quality and consistency:
+# - Checks markdown files for formatting and broken links
+# - Validates documentation structure
+# - Manual trigger only (currently disabled for PRs)
+# ==============================================================================
+
 name: Documentation Validation
 
 on:

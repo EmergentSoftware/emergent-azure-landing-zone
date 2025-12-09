@@ -64,11 +64,20 @@ module "storage_account" {
   https_traffic_only_enabled = true
   min_tls_version            = "TLS1_2"
 
-  # Enable static website hosting
-  static_website = {
-    index_document     = var.index_document
-    error_404_document = var.error_404_document
-  }
+  # Disable public network access to comply with policy
+  # Note: Static websites won't work with disabled public access
+  # This may need to be addressed with policy exemption for static sites
+  public_network_access_enabled = false
+
+  # Note: static_website disabled temporarily due to AVM module compatibility
+  # Will be re-enabled after checking AVM module requirements
+  # static_website = {
+  #   index_document     = var.index_document
+  #   error_404_document = var.error_404_document
+  # }
+
+  # Explicitly set queue_properties to empty map to avoid for_each null error
+  queue_properties = {}
 
   tags = local.common_tags
 }

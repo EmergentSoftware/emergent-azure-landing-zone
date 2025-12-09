@@ -1,0 +1,44 @@
+# =============================================================================
+# Provider Configuration
+# =============================================================================
+
+terraform {
+  required_version = ">= 1.12.0"
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.0"
+    }
+    alz = {
+      source  = "azure/alz"
+      version = "~> 0.20"
+    }
+  }
+
+  backend "azurerm" {
+    resource_group_name  = "acme-rg-prod-eus-vw01"
+    storage_account_name = "acmestprodeusvw01"
+    container_name       = "tfstate-foundation"
+    key                  = "foundation.tfstate"
+  }
+}
+
+provider "azurerm" {
+  features {}
+  subscription_id                 = var.subscription_id
+  tenant_id                       = var.tenant_id
+  resource_provider_registrations = "none"
+}
+
+# Configure the ALZ provider with library references
+provider "alz" {
+  library_references = [
+    {
+      path = "platform/alz"
+      ref  = "2025.09.0"
+    },
+    {
+      custom_url = "${path.root}/lib"
+    }
+  ]
+}

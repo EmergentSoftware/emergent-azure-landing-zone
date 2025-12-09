@@ -25,6 +25,9 @@ module "virtual_network" {
   subnets       = var.subnets
   dns_servers   = var.dns_servers
 
+  # Explicitly disable DDoS Protection Plan
+  ddos_protection_plan = null
+
   tags = var.tags
 }
 

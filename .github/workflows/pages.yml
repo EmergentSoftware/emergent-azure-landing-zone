@@ -1,3 +1,12 @@
+# ==============================================================================
+# GitHub Pages Documentation Deployment
+# ==============================================================================
+# Deploys documentation to GitHub Pages on main branch pushes:
+# - Builds documentation site
+# - Publishes to GitHub Pages
+# - Provides public documentation access
+# ==============================================================================
+
 name: Deploy Documentation to GitHub Pages
 
 on:

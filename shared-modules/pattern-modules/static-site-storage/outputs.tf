@@ -24,20 +24,20 @@ output "storage_account_name" {
 
 output "primary_web_endpoint" {
   description = "The primary web endpoint for the static website"
-  value       = module.storage_account.primary_web_endpoint
+  value       = module.storage_account.resource.primary_web_endpoint
 }
 
 output "primary_web_host" {
   description = "The primary web host for the static website"
-  value       = module.storage_account.primary_web_host
+  value       = module.storage_account.resource.primary_web_host
 }
 
 output "primary_blob_endpoint" {
   description = "The primary blob endpoint of the storage account"
-  value       = module.storage_account.primary_blob_endpoint
+  value       = module.storage_account.resource.primary_blob_endpoint
 }
 
 output "static_website_url" {
   description = "The HTTPS URL of the static website"
-  value       = "https://${module.storage_account.primary_web_host}"
+  value       = "https://${module.storage_account.resource.primary_web_host}"
 }

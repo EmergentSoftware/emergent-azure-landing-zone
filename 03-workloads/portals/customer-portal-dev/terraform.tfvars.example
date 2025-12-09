@@ -4,3 +4,12 @@
 
 subscription_id = "00000000-0000-0000-0000-000000000000"
 tenant_id       = "00000000-0000-0000-0000-000000000000"
+
+# Tagging Configuration
+tags = {
+  Project    = "ACME Portals"
+  Owner      = "Platform Team"
+  CostCenter = "Marketing"
+  Business   = "Customer-Facing"
+}
+

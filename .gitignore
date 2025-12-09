@@ -17,6 +17,10 @@ crash.*.log
 !*.tfvars.example
 !*.tfvars.template
 
+# Environment variable files
+.env
+.env.local
+
 # Ignore override files as they are usually used to override resources locally
 override.tf
 override.tf.json
@@ -55,4 +59,3 @@ plan_output.txt
 
 # Run scripts
 run.sh
-run.ps1

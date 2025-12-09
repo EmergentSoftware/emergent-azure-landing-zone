@@ -1,3 +1,12 @@
+# ==============================================================================
+# Security Scanning Workflow
+# ==============================================================================
+# Performs security scanning on pull requests:
+# - Runs Checkov for Infrastructure-as-Code security checks
+# - Scans Terraform configurations for security misconfigurations
+# - Posts findings as PR comments
+# ==============================================================================
+
 name: Security Scan
 
 on:

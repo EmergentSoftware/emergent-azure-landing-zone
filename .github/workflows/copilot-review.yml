@@ -1,3 +1,12 @@
+# ==============================================================================
+# GitHub Copilot Code Review
+# ==============================================================================
+# Automated code review using GitHub Copilot:
+# - Reviews code changes in pull requests
+# - Provides AI-powered suggestions and feedback
+# - Runs on PR open, sync, and reopen events
+# ==============================================================================
+
 name: "Copilot Code Review"
 
 on:
@@ -23,26 +32,26 @@ jobs:
           script: |
             // Add a comment requesting Copilot review
             const comment = `### 🤖 GitHub Copilot Review Requested
-            
+
             @github-copilot please review this pull request for:
             - Code quality and best practices
             - Terraform/IaC specific issues
             - Security concerns
             - Potential improvements
-            
+
             *This is an automated review request.*`;
-            
+
             // Check if we already commented
             const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
-            
-            const existingComment = comments.data.find(c => 
+
+            const existingComment = comments.data.find(c =>
               c.user.type === 'Bot' && c.body.includes('GitHub Copilot Review Requested')
             );
-            
+
             if (!existingComment) {
               await github.rest.issues.createComment({
                 issue_number: context.issue.number,

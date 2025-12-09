@@ -3,23 +3,7 @@
 # This demonstrates deploying a static HTML site using blob storage
 # =============================================================================
 
-terraform {
-  required_version = ">= 1.12.0"
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0"
-    }
-  }
-  backend "azurerm" {
-    # Backend configuration will be provided via backend config parameters
-  }
-}
 
-provider "azurerm" {
-  features {}
-  subscription_id = var.subscription_id
-}
 
 # =============================================================================
 # Static Site Storage Pattern Module
@@ -32,7 +16,7 @@ module "static_site" {
   tenant_id       = var.tenant_id
   environment     = var.environment
   location        = var.location
-  naming_suffix   = ["portals", "customer", var.workload_name, var.environment]
+  naming_suffix   = ["portals", "cust", "site", var.environment]
   purpose         = "Customer Portal Static Site"
 
   storage_account_tier     = var.storage_account_tier

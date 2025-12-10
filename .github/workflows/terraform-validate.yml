@@ -189,6 +189,38 @@ jobs:
           else
             echo "has_tfvars=false" >> $GITHUB_OUTPUT
           fi
+        env:
+          MGT_SUB: ${{ secrets.AZURE_SUB_MANAGEMENT }}
+          CONN_SUB: ${{ secrets.AZURE_SUB_CONNECTIVITY }}
+          ID_SUB: ${{ secrets.AZURE_SUB_IDENTITY }}
+          ADMIN_DEV_SUB: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}
+          ADMIN_PROD_SUB: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}
+          CUST_DEV_SUB: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}
+          CUST_PROD_SUB: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}
+          DEFAULT_SUB: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Add subscription IDs for 01-foundation
+        if: matrix.directory == '01-foundation'
+        run: |
+          # Append subscription IDs without exposing them in logs
+          printf '\n# Subscription IDs for Budget Management\n' >> terraform.tfvars
+          printf 'management_subscription_id           = "%s"\n' "${MGT_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
+          printf 'connectivity_subscription_id         = "%s"\n' "${CONN_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
+          printf 'identity_subscription_id             = "%s"\n' "${ID_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
+          printf 'portals_admin_dev_subscription_id    = "%s"\n' "${ADMIN_DEV_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
+          printf 'portals_admin_prod_subscription_id   = "%s"\n" "${ADMIN_PROD_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
+          printf 'portals_customer_dev_subscription_id = "%s"\n' "${CUST_DEV_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
+          printf 'portals_customer_prod_subscription_id = "%s"\n' "${CUST_PROD_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
+        working-directory: ${{ matrix.directory }}
+        env:
+          MGT_SUB: ${{ secrets.AZURE_SUB_MANAGEMENT }}
+          CONN_SUB: ${{ secrets.AZURE_SUB_CONNECTIVITY }}
+          ID_SUB: ${{ secrets.AZURE_SUB_IDENTITY }}
+          ADMIN_DEV_SUB: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_DEV }}
+          ADMIN_PROD_SUB: ${{ secrets.AZURE_SUB_PORTALS_ADMIN_PROD }}
+          CUST_DEV_SUB: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_DEV }}
+          CUST_PROD_SUB: ${{ secrets.AZURE_SUB_PORTALS_CUSTOMER_PROD }}
+          DEFAULT_SUB: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Terraform Plan
         id: plan

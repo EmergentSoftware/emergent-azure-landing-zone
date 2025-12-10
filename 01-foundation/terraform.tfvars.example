@@ -4,3 +4,46 @@
 
 subscription_id = "00000000-0000-0000-0000-000000000000"
 tenant_id       = "00000000-0000-0000-0000-000000000000"
+
+# =============================================================================
+# Cost Management Budgets
+# All budgets are configured with governance-aligned alert thresholds:
+# - Platform subscriptions: Actual alerts at 120%
+# - Dev/QA workloads: Actual alerts at 120%
+# - Production workloads: Both actual (120%) and forecasted (130%) alerts
+# =============================================================================
+
+# Budget Start Date (first day of month in RFC3339 format)
+budget_start_date = "2025-01-01T00:00:00Z"
+
+# Budget Alert Notification Emails
+budget_contact_emails = ["finance@example.com", "admin@example.com"]
+
+# Subscription IDs (update with your actual subscription IDs)
+# management_subscription_id          = "00000000-0000-0000-0000-000000000001"
+# connectivity_subscription_id        = "00000000-0000-0000-0000-000000000002"
+# identity_subscription_id            = "00000000-0000-0000-0000-000000000003"
+# portals_admin_dev_subscription_id   = "00000000-0000-0000-0000-000000000004"
+# portals_admin_prod_subscription_id  = "00000000-0000-0000-0000-000000000005"
+# portals_customer_dev_subscription_id = "00000000-0000-0000-0000-000000000006"
+# portals_customer_prod_subscription_id = "00000000-0000-0000-0000-000000000007"
+
+# Monthly Budget Amounts (USD) - Set at 110% of expected monthly spend
+# budget_amount_management           = 50
+# budget_amount_connectivity         = 100
+# budget_amount_identity             = 25
+# budget_amount_portals_admin_dev    = 75
+# budget_amount_portals_admin_prod   = 200
+# budget_amount_portals_customer_dev = 100
+# budget_amount_portals_customer_prod = 500
+
+# =============================================================================
+# Tagging Configuration
+# =============================================================================
+
+tags = {
+  Project     = "Azure Landing Zone"
+  Owner       = "Platform Team"
+  CostCenter  = "Infrastructure"
+  Business    = "Platform"
+}

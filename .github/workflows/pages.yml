@@ -41,10 +41,7 @@ jobs:
         uses: terraform-docs/gh-actions@v1.4.1
         with:
           working-dir: .
-          output-file: docs/terraform-reference.md
-          output-method: inject
-          recursive: true
-          recursive-path: .
+          config-file: .terraform-docs.yml
           git-push: false
 
       - name: Build with Jekyll

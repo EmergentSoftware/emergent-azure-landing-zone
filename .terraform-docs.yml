@@ -1,0 +1,29 @@
+formatter: markdown table
+
+output:
+  file: docs/terraform-reference.md
+  mode: inject
+  template: |-
+    <!-- BEGIN_TF_DOCS -->
+    {{ .Content }}
+    <!-- END_TF_DOCS -->
+
+recursive:
+  enabled: true
+  path: .
+  include-dirs:
+    - 00-bootstrap
+    - 01-foundation
+    - 02-landing-zones
+    - 03-workloads
+    - shared-modules
+
+sort:
+  enabled: true
+  by: name
+
+settings:
+  anchor: true
+  indent: 2
+  required: true
+  sensitive: true

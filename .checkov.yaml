@@ -1,0 +1,26 @@
+# ==============================================================================
+# Checkov Configuration
+# ==============================================================================
+# Skip checks that don't apply to this Azure Landing Zone demo/reference implementation
+# ==============================================================================
+
+# Skip specific checks
+skip-check:
+  # CKV_TF_1: Ensure Terraform module sources use a commit hash
+  # Reason: We intentionally use version constraints (~> 0.14) for Azure Verified Modules
+  #         to get patch updates automatically. Using commit hashes would prevent updates.
+  #         This is the recommended approach for AVM modules per Microsoft guidance.
+  - CKV_TF_1
+
+  # CKV2_AZURE_21: Ensure Storage logging is enabled for Blob service for read requests
+  # Reason: Terraform state storage containers don't require blob logging in demo/dev.
+  #         In production, this should be enabled via Azure Policy or module configuration.
+  - CKV2_AZURE_21
+
+# Optionally, you can also configure:
+# - Quiet mode (suppress passed checks)
+# - Output format
+# - Frameworks to scan
+
+# For more configuration options, see:
+# https://www.checkov.io/2.Basics/CLI%20Command%20Reference.html

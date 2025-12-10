@@ -2,8 +2,8 @@
   "required_status_checks": {
     "strict": true,
     "checks": [
-      {"context": "terraform-validate"},
-      {"context": "security-scan"}
+      { "context": "terraform-validate" },
+      { "context": "security-scan" }
     ]
   },
   "required_pull_request_reviews": {

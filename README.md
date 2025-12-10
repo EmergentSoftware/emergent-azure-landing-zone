@@ -315,14 +315,30 @@ Baseline Azure policies deployed via ALZ module:
 
 Comprehensive cost optimization and governance:
 
-- **Azure Optimization Engine**: Automated cost recommendations (~$25-30/month)
-- **Tagging Policies**: Enforce cost allocation tags for chargeback/showback
-- **Cost Anomaly Detection**: AI-powered alerts for unusual spending patterns
-- **FinOps Hub**: Optional advanced analytics with Power BI dashboards ($100+/month)
-- **Automation Scripts**: Dev resource shutdown, cost reporting, orphaned resource cleanup
-- **Budget Alerts**: Subscription and resource group budgets with action groups
+- **Budgets & Alerts**: 7 subscription-level budgets with actual (120%) and forecasted (130%) thresholds
+- **Reserved Instance Management**: RI monitoring for 5 production subscriptions with 3-tier approval workflow (<$10K, $10K-$50K, >$50K)
+- **Cost Anomaly Detection**: AI-powered alerts for unusual spending patterns across 6 subscriptions
+- **Azure Advisor Integration**: Cost recommendations monitoring with 6 optimization types (40-72% potential savings)
+- **Tagging Policies**: Enforce cost allocation tags for chargeback/showback (CostCenter, Environment, Owner, Application)
+- **Azure Policy Governance**: 80+ policies including Audit-UnusedResources, Audit-AzureHybridBenefit, Deny-UnmanagedDisk
+- **Infracost CI/CD**: Cost estimation in pull requests before deployment
+- **FinOps Hub (✅ Deployed)**: Advanced analytics with Power BI dashboards, centralized cost data ingestion, FOCUS schema, solves CSP subscription visibility limitations
+- **Azure Optimization Engine (✅ Deployed)**: 50+ automated runbooks, VM rightsizing, unused resource detection, 11 Azure Workbooks, SQL database with recommendation history
 
-See [docs/FINOPS.md](docs/FINOPS.md) for detailed implementation guide.
+**FinOps Hub Resources:**
+- Resource Group: `acme-rg-management-finops-hub-prod-eastus`
+- Data Factory: `acme-finopshub-mkkac1u6-engine-3funlapkpooie`
+- Daily cost exports with automated ETL pipeline
+
+**Azure Optimization Engine Resources:**
+- Resource Group: `acme-rg-management-finops-aoe-prod-eastus`
+- Automation Account: `acme-auto-finops-aoe` (50+ runbooks)
+- SQL Database: `acme-sql-finops-aoe/azureoptimization`
+- Log Analytics: `acme-la-finops-aoe`
+
+**Known Limitation**: Some subscriptions (CSP/Cloud Solution Provider) show "(Not supported)" when viewing costs at management group level. This is an Azure Cost Management API limitation. Individual subscription costs are fully visible. ✅ **FinOps Hub is deployed** and provides unified cost visibility across all subscription types.
+
+See [docs/FINOPS.md](docs/FINOPS.md) for detailed implementation guide and [docs/FINOPS-RI-APPROVAL-WORKFLOW.md](docs/FINOPS-RI-APPROVAL-WORKFLOW.md) for Reserved Instance purchase process.
 
 ### 5. Reusable Modules
 

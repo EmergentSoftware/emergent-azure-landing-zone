@@ -100,8 +100,12 @@ terraform output -raw instructions
 - Management group structure (Platform, Landing Zones, etc.)
 - Policy definitions and assignments
 - Role-based access control (RBAC)
+- **Budgets & Budget Alerts**: 7 subscription-level budgets with actual (120%) and forecasted (130%) thresholds
+- **Cost Anomaly Detection**: AI-powered anomaly alerts across 6 subscriptions
+- **Azure Advisor Integration**: Cost recommendations monitoring
+- **Reserved Instance Management**: Monitoring configuration for 5 production subscriptions with 3-tier approval workflow
+- **FinOps Policy Governance**: Tag enforcement, unused resource auditing, hybrid benefit compliance
 - **FinOps tagging policies** (require_cost_tags, inherit_cost_center_tag)
-- **Cost anomaly detection configuration** (outputs setup instructions)
 
 **Commands**:
 ```bash
@@ -118,25 +122,36 @@ terraform apply
 # Check management groups created
 terraform output management_group_ids
 
-# View FinOps tagging policies
-terraform output finops_tagging_policies
+# View budget configuration
+terraform output budget_summary
+
+# View RI monitoring configuration
+terraform output ri_savings_plan_monitoring
+
+# View RI alert configuration (KQL queries)
+terraform output ri_alert_configuration
 
 # View cost anomaly detection setup
 terraform output cost_anomaly_detection
 
+# View Azure Advisor integration
+terraform output advisor_cost_recommendations
+
 # View in Azure Portal
 # Azure Portal → Management Groups → acme
 # Azure Portal → Policy → Definitions (search for "ACME Cost")
+# Azure Portal → Cost Management → Budgets
+# Azure Portal → Cost Management → Cost Alerts
 ```
 
 **FinOps Configuration**:
-After applying, configure cost anomaly detection in Azure Portal:
+All FinOps components are deployed automatically. Review the outputs:
 ```bash
-# Display anomaly detection setup instructions
-terraform output -raw cost_anomaly_detection
+# Display all FinOps outputs
+terraform output | Select-String -Pattern "budget|anomaly|advisor|ri_"
 ```
 
-Follow the Portal instructions to enable AI-powered anomaly alerts for your subscriptions.
+**CSP Subscription Note**: If you have CSP (Cloud Solution Provider) subscriptions, you may see "(Not supported)" when viewing costs at management group level. This is an Azure Cost Management API limitation. Individual subscription costs are fully visible when navigating directly to subscriptions. Deploying FinOps Hub (planned Month 1-3) provides unified cost visibility across all subscription types.
 
 **Wait Time**: None - proceed immediately to Step 2
 

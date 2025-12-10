@@ -1,0 +1,36 @@
+{
+  "StorageAccount": "YOUR_FINOPS_HUB_STORAGE_ACCOUNT",
+  "StorageContainer": "msexports",
+  "ResourceGroup": "YOUR_FINOPS_HUB_RESOURCE_GROUP",
+  "ManagementSubscriptionId": "YOUR_MANAGEMENT_SUBSCRIPTION_ID",
+  "Subscriptions": [
+    {
+      "Id": "YOUR_MANAGEMENT_SUBSCRIPTION_ID",
+      "Name": "acme-alz-management"
+    },
+    {
+      "Id": "YOUR_CONNECTIVITY_SUBSCRIPTION_ID",
+      "Name": "acme-alz-connectivity"
+    },
+    {
+      "Id": "YOUR_IDENTITY_SUBSCRIPTION_ID",
+      "Name": "acme-alz-identity"
+    },
+    {
+      "Id": "YOUR_ADMIN_DEV_SUBSCRIPTION_ID",
+      "Name": "acme-portals-admin-dev"
+    },
+    {
+      "Id": "YOUR_ADMIN_PROD_SUBSCRIPTION_ID",
+      "Name": "acme-portals-admin-prod"
+    },
+    {
+      "Id": "YOUR_CUSTOMER_DEV_SUBSCRIPTION_ID",
+      "Name": "acme-portals-customer-dev"
+    },
+    {
+      "Id": "YOUR_CUSTOMER_PROD_SUBSCRIPTION_ID",
+      "Name": "acme-portals-customer-prod"
+    }
+  ]
+}

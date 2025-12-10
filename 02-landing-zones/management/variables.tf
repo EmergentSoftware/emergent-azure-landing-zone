@@ -101,3 +101,53 @@ variable "common_tags" {
     Repository       = "emergent-azure-landing-zone"
   }
 }
+
+# =============================================================================
+# Azure Optimization Engine Variables
+# =============================================================================
+
+variable "enable_azure_optimization_engine" {
+  description = "Enable deployment of Azure Optimization Engine for cost optimization"
+  type        = bool
+  default     = false
+}
+
+variable "aoe_deployment_version" {
+  description = "Version identifier for AOE deployment (triggers redeployment when changed)"
+  type        = string
+  default     = "1.0.0"
+}
+
+variable "aoe_admin_upn" {
+  description = "User Principal Name (email) for AOE SQL Server admin (required if enable_azure_optimization_engine = true)"
+  type        = string
+  default     = ""
+}
+
+variable "aoe_admin_object_id" {
+  description = "Azure AD Object ID for AOE SQL Server admin (required if enable_azure_optimization_engine = true)"
+  type        = string
+  default     = ""
+}
+
+variable "log_analytics_workspace_name" {
+  description = "Name of existing Log Analytics workspace to reuse for AOE"
+  type        = string
+  default     = ""
+}
+
+variable "log_analytics_resource_group_name" {
+  description = "Resource group name of existing Log Analytics workspace"
+  type        = string
+  default     = ""
+}
+
+# =============================================================================
+# FinOps Hub Variables (Optional - Advanced Analytics)
+# =============================================================================
+
+variable "enable_finops_hub" {
+  description = "Enable deployment of FinOps Hub for advanced cost analytics (optional, adds cost)"
+  type        = bool
+  default     = false
+}

@@ -100,6 +100,8 @@ terraform output -raw instructions
 - Management group structure (Platform, Landing Zones, etc.)
 - Policy definitions and assignments
 - Role-based access control (RBAC)
+- **FinOps tagging policies** (require_cost_tags, inherit_cost_center_tag)
+- **Cost anomaly detection configuration** (outputs setup instructions)
 
 **Commands**:
 ```bash
@@ -109,16 +111,32 @@ terraform plan
 terraform apply
 ```
 
-**Duration**: ~5-10 minutes (540 resources)
+**Duration**: ~5-10 minutes (540+ resources)
 
 **Verify**:
 ```bash
 # Check management groups created
 terraform output management_group_ids
 
+# View FinOps tagging policies
+terraform output finops_tagging_policies
+
+# View cost anomaly detection setup
+terraform output cost_anomaly_detection
+
 # View in Azure Portal
 # Azure Portal → Management Groups → acme
+# Azure Portal → Policy → Definitions (search for "ACME Cost")
 ```
+
+**FinOps Configuration**:
+After applying, configure cost anomaly detection in Azure Portal:
+```bash
+# Display anomaly detection setup instructions
+terraform output -raw cost_anomaly_detection
+```
+
+Follow the Portal instructions to enable AI-powered anomaly alerts for your subscriptions.
 
 **Wait Time**: None - proceed immediately to Step 2
 
@@ -547,6 +565,85 @@ az policy state list --resource-group <rg-name>
 - Add private endpoints for production
 - Deploy production networks (portals-admin-prod, portals-customer-prod)
 - Add monitoring and alerting
+- **Enable FinOps Optimization** (see below)
+
+---
+
+## Optional: Enable FinOps Cost Optimization
+
+**Purpose**: Add automated cost optimization and governance capabilities to your Azure Landing Zone.
+
+**When to Deploy**: After foundational infrastructure is running and you want to implement cost optimization.
+
+**What's Included**:
+- Azure Optimization Engine (~$25-30/month) - Automated cost recommendations
+- FinOps Hub ($100+/month, optional) - Advanced analytics with Power BI
+- Cost anomaly detection (free) - Already configured in Step 1
+- Automation scripts for dev resource shutdown, cost reporting, orphaned cleanup
+
+**Configuration**:
+
+1. **Enable Azure Optimization Engine** in `02-landing-zones/management/terraform.tfvars`:
+   ```hcl
+   enable_azure_optimization_engine = true
+   aoe_deployment_version          = "1.0.0"
+   aoe_admin_upn                   = "admin@yourdomain.com"
+   aoe_admin_object_id             = "00000000-0000-0000-0000-000000000000"
+   log_analytics_workspace_name    = "law-finops-prod-eus2"
+   log_analytics_resource_group_name = "acme-rg-management-prod-eus2"
+   ```
+
+2. **Deploy Azure Optimization Engine**:
+   ```powershell
+   cd 02-landing-zones/management
+   terraform apply -var-file="terraform.tfvars"
+   
+   # Follow the output instructions to complete AOE deployment
+   terraform output -raw azure_optimization_engine_deployment
+   ```
+
+3. **(Optional) Enable FinOps Hub** for advanced analytics:
+   ```hcl
+   enable_finops_hub = true
+   ```
+   
+   ```powershell
+   terraform apply -var-file="terraform.tfvars"
+   
+   # Follow output instructions for FinOps Hub deployment
+   terraform output -raw finops_hub_deployment
+   ```
+
+4. **Configure Cost Anomaly Alerts** (already deployed in Step 1):
+   ```powershell
+   cd ../../01-foundation
+   terraform output -raw cost_anomaly_detection
+   ```
+   
+   Follow the Azure Portal instructions to enable anomaly detection for your subscriptions.
+
+5. **Use Automation Scripts** for FinOps operations:
+   ```powershell
+   # Scan for orphaned resources
+   ./scripts/finops/orphaned-resources-cleanup.ps1 -ScanOnly
+   
+   # Generate cost allocation report
+   ./scripts/finops/cost-allocation-report.ps1 -OutputFormat CSV -OutputPath "costs.csv"
+   
+   # Shutdown dev resources (schedule with Azure Automation)
+   ./scripts/finops/shutdown-dev-resources.ps1 -Environment Dev -WhatIf
+   ```
+
+**Cost Breakdown**:
+- Azure Optimization Engine: ~$25-30/month (recommended for all deployments)
+- FinOps Hub: ~$100-150/month (optional, for advanced analytics)
+- Cost Anomaly Detection: Free (Azure Cost Management feature)
+- Automation Runbooks: ~$1-2/month (if scheduled)
+
+**ROI**: Typically saves 15-30% on monthly Azure costs, paying for itself within weeks.
+
+**Documentation**: See [docs/FINOPS.md](../docs/FINOPS.md) for complete FinOps implementation guide.
+
 echo "3. Check Azure Portal → Policy to see compliance status"
 ```
 

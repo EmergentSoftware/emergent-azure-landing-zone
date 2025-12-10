@@ -87,6 +87,7 @@ jobs:
           output_format: sarif
           output_file_path: checkov.sarif
           soft_fail: false
+          config_file: .checkov.yaml
 
       - name: Upload Checkov results
         uses: github/codeql-action/upload-sarif@v4

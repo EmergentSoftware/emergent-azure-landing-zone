@@ -38,14 +38,32 @@ Configure the following in GitHub repository settings:
 - [ ] Enable Security Advisories
 - [ ] Enable Dependabot alerts
 - [ ] Enable Code scanning (uses Security Actions workflows)
-- [ ] Configure branch protection rules for `main`
+- [x] Configure branch protection rules for `main`
 
-#### Branch Protection Rules for `main`
-- [ ] Require pull request reviews before merging (at least 1 reviewer)
-- [ ] Require status checks to pass before merging
-  - Required checks: Terraform Validation, Security Scan
-- [ ] Require conversation resolution before merging
-- [ ] Do not allow bypassing the above settings
+#### Pull Request Settings
+- [x] Allow squash merging (recommended for clean history)
+- [ ] Allow merge commits (disabled)
+- [ ] Allow rebase merging (disabled)
+- [x] Automatically delete head branches (cleanup after merge)
+- [ ] Allow auto-merge (optional)
+
+**Default commit message**: Use pull request title and description
+
+#### Branch Protection Rules for `main` (Demo Configuration)
+- [ ] ~~Require pull request reviews~~ (Disabled - demo environment)
+- [x] Require status checks to pass before merging
+  - Required checks (add these in GitHub UI):
+    - `Terraform PR Checks / Find Changed Terraform Directories`
+    - `Terraform PR Checks / Check *` (wildcard matches all terraform validation jobs)
+    - `Security Scan / Checkov Security Scan` (blocks on security issues)
+    - `Security Scan / tfsec Security Scan` (blocks on security issues)
+- [x] Require conversation resolution before merging
+- [x] Require linear history
+- [x] Block force pushes
+- [x] Block deletions
+- [ ] Do not allow bypassing the above settings (Disabled for demo flexibility)
+
+**Note**: Security scans now have `soft_fail: false` and will block merges if security issues are found.
 
 #### Teams and Permissions
 Update the CODEOWNERS file with actual team names:

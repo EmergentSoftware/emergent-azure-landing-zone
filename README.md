@@ -27,6 +27,7 @@ This repository demonstrates deploying **Azure Landing Zones** using **Azure Ver
 - ✅ Simplified workloads landing zone
 - ✅ Complete networking and monitoring infrastructure
 - ✅ Example workload deployments
+- ✅ **FinOps toolkit integration** (cost optimization, tagging policies, anomaly detection)
 - ✅ Comprehensive documentation
 
 ## 🏗️ Architecture
@@ -307,8 +308,23 @@ Baseline Azure policies deployed via ALZ module:
 - **Compliance**: Allowed locations, required tags
 - **Monitoring**: Enable Azure Monitor, diagnostic settings (planned)
 - **Networking**: NSG rules, Azure Firewall policies (planned)
+- **FinOps Tagging**: Required cost allocation tags (CostCenter, Environment, Owner, Project)
+- **Tag Inheritance**: Auto-inherit CostCenter tag from resource group to resources
 
-### 4. Reusable Modules
+### 4. FinOps Cost Management
+
+Comprehensive cost optimization and governance:
+
+- **Azure Optimization Engine**: Automated cost recommendations (~$25-30/month)
+- **Tagging Policies**: Enforce cost allocation tags for chargeback/showback
+- **Cost Anomaly Detection**: AI-powered alerts for unusual spending patterns
+- **FinOps Hub**: Optional advanced analytics with Power BI dashboards ($100+/month)
+- **Automation Scripts**: Dev resource shutdown, cost reporting, orphaned resource cleanup
+- **Budget Alerts**: Subscription and resource group budgets with action groups
+
+See [docs/FINOPS.md](docs/FINOPS.md) for detailed implementation guide.
+
+### 5. Reusable Modules
 
 Azure Verified Modules (AVM) wrappers for consistency:
 
@@ -318,13 +334,14 @@ Azure Verified Modules (AVM) wrappers for consistency:
 - **Log Analytics**: Centralized logging (planned)
 - **Naming Convention**: Consistent Azure resource naming
 
-### 5. Infrastructure as Code Best Practices
+### 6. Infrastructure as Code Best Practices
 
 - **Remote State**: Azure Storage backend for team collaboration
 - **Layered Deployment**: Bootstrap → Foundation → Landing Zones → Workloads
 - **Modular Design**: Shared modules for reusability
 - **IPAM**: Centralized IP address management
 - **Parallel Deployments**: Concurrent spoke VNet deployments for speed
+- **FinOps Integration**: Cost optimization and tagging governance from day one
 
 The configuration demonstrates how to modify policies:
 

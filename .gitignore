@@ -17,6 +17,19 @@ crash.*.log
 !*.tfvars.example
 !*.tfvars.template
 
+# FinOps configuration files with subscription IDs
+**/configure-finops-exports.ps1
+**/configure-finops-exports.sh
+**/finops-exports-config.json
+
+# Power BI files
+# Ignore saved reports (.pbix) which may contain cached data and credentials
+**/*.pbix
+# Allow templates (.pbit) and documentation
+!**/*.pbit
+!**/README.md
+*.zip
+
 # Environment variable files
 .env
 .env.local

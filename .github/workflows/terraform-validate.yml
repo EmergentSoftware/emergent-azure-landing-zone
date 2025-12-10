@@ -208,7 +208,7 @@ jobs:
           printf 'connectivity_subscription_id         = "%s"\n' "${CONN_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
           printf 'identity_subscription_id             = "%s"\n' "${ID_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
           printf 'portals_admin_dev_subscription_id    = "%s"\n' "${ADMIN_DEV_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
-          printf 'portals_admin_prod_subscription_id   = "%s"\n" "${ADMIN_PROD_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
+          printf 'portals_admin_prod_subscription_id   = "%s"\n' "${ADMIN_PROD_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
           printf 'portals_customer_dev_subscription_id = "%s"\n' "${CUST_DEV_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
           printf 'portals_customer_prod_subscription_id = "%s"\n' "${CUST_PROD_SUB:-$DEFAULT_SUB}" >> terraform.tfvars
         working-directory: ${{ matrix.directory }}
